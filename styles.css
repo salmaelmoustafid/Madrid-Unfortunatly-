@@ -429,7 +429,7 @@ html,body{color:var(--ink)}
   --cyan:#b8e9ee;
 }
 .map-page{background:#fff}
-#map{filter:brightness(1.12) saturate(.78) contrast(.96)}
+#map{filter:brightness(1.16) saturate(.72) contrast(.94)}
 .map-wash{background:rgba(255,255,255,.05)!important;pointer-events:none}
 .map-search-panel{position:absolute;z-index:650;top:15px;left:50%;transform:translateX(-50%);width:min(430px,calc(100% - 30px));font:11px Verdana,sans-serif}
 .map-search-panel form{display:flex;align-items:center;gap:7px;background:#fff;border:2px solid #b9a8c8;box-shadow:3px 3px 0 rgba(65,43,78,.2);padding:6px 7px}
@@ -464,3 +464,66 @@ html,body{color:var(--ink)}
 @media(max-width:700px){
  .map-search-panel{top:8px;left:50%;width:calc(100% - 20px)}
 }
+
+/* Version 13: no-key public OpenStreetMap tiles with a soft, brighter treatment. */
+.leaflet-tile{filter:brightness(1.04) saturate(.88)}
+
+
+/* Version 14 visual pass: balanced pastel palette, white navigation, clear window headers. */
+:root{
+ --pink:#e9a9c5;
+ --pink2:#f6dce8;
+ --purple:#b9a8d6;
+ --purple2:#e8e0f2;
+ --cyan:#a9dce2;
+ --line:#40334a;
+ --shadow:5px 5px 0 #ded4e5;
+}
+.topbar{
+ background:linear-gradient(90deg,#e9a9c5 0%,#f1bfd2 58%,#f5d3df 100%)!important;
+ color:#35283c!important;border-bottom:3px solid #40334a!important;
+ box-shadow:0 3px 0 #eadde5!important;
+}
+.topbar .brand,.topbar .brand small,.topbar .signed-in{color:#35283c!important}
+.topbar button{background:#fff!important;color:#35283c!important;border-color:#40334a!important}
+.sidebar{
+ background:#fff!important;border-color:#40334a!important;
+ box-shadow:5px 5px 0 #e5dce8!important;
+}
+.sidebar-mark{color:#d58eaf!important}
+.nav-button{color:#382d40!important;background:#fff!important}
+.nav-button:hover,.nav-button.active{
+ background:#f7e6ee!important;outline:1px solid #d9a9bf!important;
+}
+.window{background:#fff!important;border-color:#40334a!important;box-shadow:6px 6px 0 #e4dce8!important}
+.window-bar,.titlebar{
+ background:#e9a9c5!important;color:#35283c!important;
+ border-bottom:1px solid #b9859e!important;
+}
+.window-bar button{background:#fff!important;color:#35283c!important}
+.window-body{background:#fff!important;color:#35283c!important}
+.quick-window .window-body,.legend-window .window-body{
+ background:#fff!important;color:#35283c!important;
+}
+.quick-window,.legend-window{background:#fff!important}
+.quick-window .window-bar{background:#a9dce2!important}
+.legend-window .window-bar{background:#f0c7d8!important}
+.quick-window button,.quick-window .action-button{
+ color:#35283c!important;border:1px solid #77677e!important;
+}
+.quick-window .action-button:nth-child(1){background:#f1c4d7!important}
+.quick-window .action-button:nth-child(2){background:#c9dce9!important}
+.quick-window .action-button:nth-child(3){background:#c9e6df!important}
+.legend-window .window-body,.legend-window .window-body *{color:#35283c!important}
+.stats-window .window-body,.memories-window .window-body,.currently-window .window-body{
+ background:#fff!important;color:#35283c!important;
+}
+.sprite-character{
+ display:block!important;width:auto!important;height:88px!important;
+ max-width:72px!important;object-fit:contain!important;
+ background:none!important;background-image:none!important;
+ image-rendering:pixelated;
+}
+.alisha-sprite,.eva-sprite{animation:none!important}
+.map-character{display:flex;flex-direction:column;align-items:center;gap:2px}
+.map-character span{background:#fff!important;color:#35283c!important;border:1px solid #9b879f!important}

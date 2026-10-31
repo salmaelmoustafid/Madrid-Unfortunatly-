@@ -93,3 +93,16 @@ before saving. Comments are included in shared database sync.
 - Softer pastel overrides and white Bucket List, Side Quests and Scrapbook surfaces.
 - Character profile photos are resized and saved locally in this browser. They persist after refresh on this device; cross-device photo sharing requires a later Supabase Storage integration.
 - Expanded the random side-quest pool.
+
+
+## Version 13 hotfix
+- Fixed blank map caused by the CARTO basemap endpoint requiring an API key.
+- Restored public OpenStreetMap tiles (no API key required) and retained a brighter, softer visual treatment.
+
+
+## Version 14 visual updates
+- Top banner changed to soft pink.
+- Left navigation rail changed to white.
+- Quick Actions and Map Key windows now use white backgrounds with high-contrast text and distinct pastel title bars.
+- Reduced the dominance of purple across the desktop UI.
+- Added standalone transparent character image assets (`assets/alisha-character.png` and `assets/eva-character.png`) and switched map characters to those images instead of attempting to animate the full sprite sheets.
