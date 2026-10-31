@@ -1,14 +1,13 @@
-# Madrid, unfortunately — Version 20
+# Madrid, unfortunately. — V23 Mobile-ready complete website
 
-Repair pass covering independent animated player sprites under Quick Actions, brighter neutral map tiles, removal of map fairy/butterfly decorations, editable/deletable custom pins, a single museum umbrella task with selectable museum choice, working modal/window controls, reliable drag positioning, and compressed persistent profile photos.
+This package contains the complete website, based on the V22 character-assets release, with a mobile responsive CSS layer and mobile map gestures added. Existing desktop styling and application features are retained.
 
-Keep all files and folders together at the repository root. Do not rename index.html.
+## Deploy to GitHub / Netlify
 
-Profile pictures are saved in this browser's local storage (device-specific); Supabase authentication sessions persist on this device. Shared adventures and pins continue to use the configured Supabase project.
+Upload the contents of this folder to the root of your GitHub repository, keeping the `assets/` and `supabase/` folders. Do not upload the ZIP itself.
 
+Required root files: `index.html`, `styles.css`, `app.js`, `supabase-config.js`, and `netlify.toml`.
 
-## Character asset filenames (isolated)
-- `assets/mu-v22-alisha-sprite-7f3a.png`
-- `assets/mu-v22-eva-sprite-9c2d.png`
+On mobile, one-finger movement is left to normal page scrolling. Two-finger movement pans the map and pinch gestures zoom it. Desktop map dragging remains enabled.
 
-The Quick Actions portraits reference these unique paths. Legacy sprite-sheet filenames are not used by the Quick Actions markup or CSS.
+The mobile gestures should still be tested on a physical phone after deployment.
