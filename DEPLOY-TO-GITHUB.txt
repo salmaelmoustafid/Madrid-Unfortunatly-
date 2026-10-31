@@ -1,14 +1,15 @@
-GITHUB UPLOAD CHECKLIST
+VERSION 17 — IMPORTANT UPLOAD INSTRUCTIONS
 
-1. Download and extract madrid-unfortunately-static.zip.
-2. Open the extracted folder.
-3. Open your GitHub repository.
-4. Choose Add file → Upload files.
-5. Drag the files and folders INSIDE this folder into GitHub. Do not upload the ZIP itself.
-6. Commit the upload to the main branch.
-7. In Netlify, import the GitHub repository.
-8. Build command: leave empty.
-9. Publish directory: .
-10. Deploy.
+Upload/replace the website files in the ROOT of your GitHub repository.
 
-No Node.js, Vite, React or build command is needed.
+The repository root must contain:
+- index.html
+- app.js
+- styles.css
+- supabase-config.js
+- netlify.toml
+- assets/  (folder containing alisha-character.png and eva-character.png)
+- supabase/ (folder)
+
+Do not upload only index.html. Do not put the assets folder inside another nested project folder.
+The two character PNGs are already included in assets/.

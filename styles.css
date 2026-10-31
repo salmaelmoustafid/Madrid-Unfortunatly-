@@ -608,3 +608,11 @@ html,body{color:var(--ink)}
 .map-character .alisha-sprite,.map-character .eva-sprite{
   background-image:none!important;
 }
+
+/* Version 17: natural, neutral map colours; keep Leaflet fully interactive. */
+#map{filter:none!important}
+#map .leaflet-tile{filter:none!important}
+#map,.leaflet-container,.leaflet-pane,.leaflet-tile-pane,.leaflet-marker-pane,.leaflet-overlay-pane{
+  pointer-events:auto!important;
+}
+.map-wash,.map-character{pointer-events:none!important}
