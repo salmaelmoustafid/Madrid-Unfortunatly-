@@ -3,7 +3,7 @@
   const $ = (s, root=document) => root.querySelector(s), $$ = (s, root=document) => [...root.querySelectorAll(s)];
   const STORE = 'madrid-unfortunately-static-v1';
   const initialAdventures = [
-    ['Go to a museum','Museums','Museo del Prado'],['Go to a club','Nightlife',''],['Wear wigs and go out','Chaotic',''],['Have a picnic in El Retiro','Explore','Parque del Retiro'],['Try a new cuisine','Food & Drink',''],['Go to a rooftop bar','Nightlife',''],['Take a day trip','Explore',''],['Go to a concert','Culture',''],['Visit a market','Food & Drink','El Rastro'],['Do something random','Chaotic','']
+    ['Go to a museum','Museums',''],['Go to a club','Nightlife',''],['Wear wigs and go out','Chaotic',''],['Have a picnic in El Retiro','Explore','Parque del Retiro'],['Try a new cuisine','Food & Drink',''],['Go to a rooftop bar','Nightlife',''],['Take a day trip','Explore',''],['Go to a concert','Culture',''],['Visit a market','Food & Drink','El Rastro'],['Do something random','Chaotic','']
   ].map((a,i)=>({id:'a'+i,title:a[0],category:a[1],place:a[2],description:'',completedBy:[]}));
   const seedQuests = [
     ['Take a photo of a street cat','📸',5],['Order something you have never tried before','☕',5],['Speak Spanish all day — no English allowed','💬',10],['Find a random event in Madrid','⭐',10],['Do something spontaneous','🪽',15],['Make a playlist titled “Madrid, unfortunately.”','♫',5]
@@ -54,8 +54,8 @@
   const supabaseClient = window.supabase && window.MADRID_SUPABASE_CONFIG?.url && window.MADRID_SUPABASE_CONFIG?.publishableKey
     ? window.supabase.createClient(window.MADRID_SUPABASE_CONFIG.url, window.MADRID_SUPABASE_CONFIG.publishableKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
     : null;
-  function load(){try{const x=JSON.parse(localStorage.getItem(STORE));if(x)return {...x,adventures:x.adventures||initialAdventures,quests:x.quests||[],memories:x.memories||[],customPlaces:x.customPlaces||[],currentActivity:x.currentActivity||null,profilePhotos:x.profilePhotos||{}}}catch(e){}return {adventures:initialAdventures,quests:[],memories:[],customPlaces:[],currentActivity:null,profilePhotos:{}}}
-  function save(){localStorage.setItem(STORE,JSON.stringify(state));updateStats();renderLatest();renderBucket();renderQuests();renderScrapbook();renderCurrentActivity();}
+  function load(){try{const x=JSON.parse(localStorage.getItem(STORE));if(x){const data={...x,adventures:x.adventures||initialAdventures,quests:x.quests||[],memories:x.memories||[],customPlaces:x.customPlaces||[],currentActivity:x.currentActivity||null,profilePhotos:x.profilePhotos||{}};const museumTask=data.adventures.find(a=>a.title?.toLowerCase()==='go to a museum');if(museumTask){museumTask.place='';data.adventures=data.adventures.filter(a=>a.id===museumTask.id||!(a.category==='Museums'&&(/^(visit )?museo/i.test(a.title)||museums.includes(a.title))));}return data;}}catch(e){console.warn('Could not read saved adventure data',e)}return {adventures:initialAdventures,quests:[],memories:[],customPlaces:[],currentActivity:null,profilePhotos:{}}}
+  function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(err){console.error('Local save failed',err);toast('Storage is full. Try a smaller profile photo.')}updateStats();renderLatest();renderBucket();renderQuests();renderScrapbook();renderCurrentActivity();}
   const playerEmail = {alisha:'alisha@madrid-unfortunately.invalid',eva:'eva@madrid-unfortunately.invalid'};
   let realtimeChannel=null, sharedSyncBusy=false;
   async function persistAdventure(a){
@@ -73,6 +73,7 @@
     const {error}=await supabaseClient.from('map_pins').upsert(row);
     if(error){console.error(error);toast('Could not sync map pin: '+error.message)}
   }
+  async function deletePersistedPin(id){if(!supabaseClient||!currentUser||!uuidOrNull(id))return;const {error}=await supabaseClient.from('map_pins').delete().eq('id',id);if(error){console.error(error);toast('Could not delete shared pin: '+error.message);}}
   async function persistSideQuest(q){
     if(!supabaseClient || !currentUser) return;
     const row={id:uuidOrNull(q.id),title:q.title,icon:q.icon||'✦',points:q.points||10,completed_by:(q.completedBy||[currentUser])[0]||currentUser,completion_comment:q.completionComment||null};
@@ -110,6 +111,8 @@
         pRes.data=data;
       }
       state.adventures=(aRes.data||[]).map(r=>({id:r.id,title:r.title,category:r.category,place:r.place||'',description:r.description||'',completedBy:r.completed_by||[],createdBy:r.created_by,completedAt:r.completed_at,completionComment:r.completion_comment||''}));
+      const museumUmbrella=state.adventures.find(a=>a.title.toLowerCase()==='go to a museum');
+      if(museumUmbrella){const duplicates=state.adventures.filter(a=>a.id!==museumUmbrella.id&&a.category==='Museums'&&(/^(visit )?museo/i.test(a.title)||museums.includes(a.title)));for(const d of duplicates){state.adventures=state.adventures.filter(a=>a.id!==d.id);if(uuidOrNull(d.id))await supabaseClient.from('adventures').delete().eq('id',d.id);}}
       state.quests=(qRes.data||[]).map(r=>({id:r.id,title:r.title,icon:r.icon||'✦',points:r.points||0,completedBy:[r.completed_by],detail:'Side quest',completionComment:r.completion_comment||''}));
       state.customPlaces=(pRes.data||[]).map(r=>({id:r.id,name:r.title,lat:r.latitude,lng:r.longitude,category:r.category,note:r.note}));
       localStorage.setItem(STORE,JSON.stringify(state));
@@ -160,9 +163,16 @@
     let hash=0; for(let i=0;i<(title||'').length;i++) hash=(hash*31+title.charCodeAt(i))|0;
     return options[Math.abs(hash)%options.length];
   }
-  function renderBucket(){const list=$('#adventureList');if(!list)return;const rows=state.adventures.filter(a=>activeFilter==='All'||a.category===activeFilter);list.innerHTML=rows.map(a=>{const done=a.completedBy?.length;return `<article class="adventure-card ${done?'done':''}"><button class="quest-check" data-complete="${a.id}" aria-label="Mark complete">${done?'✓':''}</button><div class="adventure-copy"><b>${esc(a.title)}</b><small>${esc(a.category)}${a.place?' · '+esc(a.place):''}</small>${a.description?`<p>${esc(a.description)}</p>`:''}${done?`<p class="done-stamp">✓ COMPLETED BY ${a.completedBy.map(x=>x.toUpperCase()).join(' + ')}</p>`:`<button class="mini-action" data-start-adventure="${a.id}">CURRENTLY DOING THIS →</button>`}</div></article>`}).join('')||'<div class="empty-state">Nothing in this category yet.</div>';$('#museumList').innerHTML=museums.map(m=>`<div class="museum-button">${esc(m)}</div>`).join('')}
+  function renderBucket(){
+    const list=$('#adventureList');if(!list)return;
+    const rows=state.adventures.filter(a=>activeFilter==='All'||a.category===activeFilter);
+    list.innerHTML=rows.map(a=>{const done=a.completedBy?.length;return `<article class="adventure-card ${done?'done':''}"><button class="quest-check" data-complete="${esc(a.id)}" aria-label="Mark complete">${done?'✓':''}</button><div class="adventure-copy"><b>${esc(a.title)}</b><small>${esc(a.category)}${a.place?' · '+esc(a.place):''}</small>${a.description?`<p>${esc(a.description)}</p>`:''}${done?`<p class="done-stamp">✓ COMPLETED BY ${a.completedBy.map(x=>x.toUpperCase()).join(' + ')}</p>`:`<button class="mini-action" data-start-adventure="${esc(a.id)}">CURRENTLY DOING THIS →</button>`}</div></article>`}).join('')||'<div class="empty-state">Nothing in this category yet.</div>';
+    const museumTask=state.adventures.find(a=>a.title.toLowerCase()==='go to a museum');
+    $('#museumList').innerHTML=museums.map(m=>`<button type="button" class="museum-button ${museumTask?.place===m?'selected':''}" data-museum-choice="${esc(m)}">${esc(m)}${museumTask?.place===m?' ✓':''}</button>`).join('');
+  }
   function renderQuests(){const el=$('#questHistory');if(!el)return;if(!state.quests.length){el.innerHTML='<div class="empty-state"><div style="font-size:28px">✧</div><b>NO SIDE QUESTS COMPLETED… YET.</b><p>Generate a random side quest from Quick Actions on the map. Once completed, it will be recorded here.</p></div>';return}el.innerHTML=[...state.quests].reverse().map(q=>`<article class="quest-row"><span class="quest-icon">${q.icon||'✦'}</span><div><b>${esc(q.title)}</b><small>${esc(q.detail||'Side quest')} · ${esc((q.completedBy||[]).map(x=>x.toUpperCase()).join(' + ')||'Completed')}</small>${q.completionComment?`<p class="completion-snark">“${esc(q.completionComment)}”</p>`:''}</div><span class="points">+${q.points||0} PTS</span></article>`).join('')}
   function renderScrapbook(){const el=$('#scrapbookGrid');if(!el){return}const rows=state.memories.filter(m=>memoryFilter==='All'||m.by===memoryFilter);el.innerHTML=rows.length?rows.map(m=>`<article class="memory-card"><img src="${m.url}" alt="${esc(m.caption||'Memory')}"><input data-caption="${m.id}" value="${esc(m.caption||'') }" placeholder="Add a caption…"><div class="memory-meta"><span>${(m.by||'').toUpperCase()} · ${esc(m.date||'')}</span><button class="text-link" data-delete-memory="${m.id}">REMOVE</button></div></article>`).join(''):'<div class="empty-state" style="grid-column:1/-1"><div style="font-size:28px">ʚɞ</div><b>THE SCRAPBOOK IS WAITING.</b><p>Upload your first photo. No sample memories — only your actual evidence.</p></div>'}
+  function compressImage(file,maxSide=480,quality=.78){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=reject;reader.onload=()=>{const img=new Image();img.onerror=reject;img.onload=()=>{const scale=Math.min(1,maxSide/Math.max(img.width,img.height));const canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',quality));};img.src=reader.result;};reader.readAsDataURL(file);});}
   function renderCharacter(who){
     selectedCharacter=who;$$('.character-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.character===who));
     const name=who==='alisha'?'Alisha':'Eva', photo=state.profilePhotos?.[who]||'';
@@ -171,7 +181,7 @@
     const photoCount=state.memories.filter(m=>m.by===who||m.by==='both').length;
     const achievements=[['First steps','Complete your first adventure',done>=1],['Culture vulture','Visit a museum',state.adventures.some(a=>a.category==='Museums'&&(a.completedBy||[]).includes(who))],['Out after dark','Complete a nightlife adventure',state.adventures.some(a=>a.category==='Nightlife'&&(a.completedBy||[]).includes(who))],['Side quester','Complete a side quest',questCount>=1],['Memory collector','Add a scrapbook memory',photoCount>=1],['Madrid local-ish','Complete five adventures',done>=5]];
     $('#characterProfile').innerHTML=`<div class="profile-art"><div class="profile-avatar">${photo?`<img src="${photo}" alt="${name} profile picture">`:'<span>ʚɞ</span>'}</div><label class="pixel-button profile-upload">＋ ADD PICTURE<input id="profilePhotoUpload" type="file" accept="image/*" hidden></label></div><div class="profile-info"><p class="eyebrow">PLAYER PROFILE</p><h2>${name.toUpperCase()}</h2><div class="stat-grid"><div><b>${done}</b><small>ADVENTURES</small></div><div><b>${questCount}</b><small>SIDE QUESTS</small></div><div><b>${photoCount}</b><small>MEMORIES</small></div></div><h3 class="achievement-heading">ACHIEVEMENTS</h3><div class="achievement-grid">${achievements.map(a=>`<div class="achievement ${a[2]?'':'locked'}"><b>${a[2]?'✧':'□'} ${a[0]}</b>${a[1]}</div>`).join('')}</div></div>`;
-    $('#profilePhotoUpload').onchange=async e=>{const f=e.target.files[0];if(!f)return;const url=await new Promise(r=>{const reader=new FileReader();reader.onload=()=>r(reader.result);reader.readAsDataURL(f)});state.profilePhotos=state.profilePhotos||{};state.profilePhotos[who]=url;save();renderCharacter(who)};
+    $('#profilePhotoUpload').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const url=await compressImage(f,480,0.78);state.profilePhotos=state.profilePhotos||{};state.profilePhotos[who]=url;save();renderCharacter(who);toast('Profile picture saved on this device.')}catch(err){console.error(err);toast('Could not save that picture. Try another image.')}};
   }
   function renderCurrentActivity(){
     const el=$('#currentActivity');if(!el)return;const a=state.currentActivity;
@@ -222,18 +232,21 @@
     });drawMarkers()}
   function drawMarkers(){
     if(!map)return;markers.forEach(m=>map.removeLayer(m));markers=[];
-    const all=[...places.map(p=>({name:p[0],lat:p[1],lng:p[2],category:p[3],predefined:true})),...state.customPlaces.map(p=>({name:p.name,lat:p.lat,lng:p.lng,category:p.category||'Custom',id:p.id}))];
+    const all=[...places.map(p=>({name:p[0],lat:p[1],lng:p[2],category:p[3],predefined:true})),...(state.customPlaces||[]).map(p=>({...p,category:p.category||'Custom'}))];
     all.forEach(p=>{
       const related=state.adventures.filter(a=>a.place&&a.place.toLowerCase()===p.name.toLowerCase());
-      const completed=related.some(a=>(a.completedBy||[]).length);
-      const planned=related.length>0&&!completed;
-      const symbol=completed?'✦':planned?'◆':p.category==='Custom'?'📍':'ʚɞ';
-      const icon=L.divIcon({className:'',html:`<span style="font-size:22px;color:${completed?'#37a8a2':planned?'#d62eb8':'#8a59c7'};text-shadow:1px 1px #fff, -1px -1px #fff;filter:drop-shadow(1px 2px 1px #aaa)">${symbol}</span>`,iconSize:[28,28],iconAnchor:[14,24]});
-      const status=completed?'Completed adventure':planned?'Planned adventure':'Madrid place';
-      const popup=`<b>${esc(p.name)}</b><br>${status}`;
+      const completed=related.some(a=>(a.completedBy||[]).length), planned=related.length>0&&!completed;
+      const color=completed?'#259b8e':planned?'#d65a9d':p.category==='Custom'?'#4b83c5':'#8b8790';
+      const icon=L.divIcon({className:'map-marker-icon',html:`<span style="background:${color}"></span>`,iconSize:[18,18],iconAnchor:[9,9]});
+      const status=completed?'Completed adventure':planned?'Planned adventure':p.category==='Custom'?'Custom pin':'Madrid place';
+      let popup=`<div class="map-place-popup"><b>${esc(p.name)}</b><p>${status}</p>`;
+      if(p.id&&!p.predefined) popup+=`<div class="pin-actions"><button type="button" data-edit-pin="${esc(p.id)}">EDIT</button><button type="button" data-delete-pin="${esc(p.id)}">DELETE</button></div>`;
+      popup+='</div>';
       const marker=L.marker([p.lat,p.lng],{icon}).addTo(map).bindPopup(popup);markers.push(marker);
     });
   }
+  function editPin(id){const pin=state.customPlaces.find(p=>String(p.id)===String(id));if(!pin)return;showModal('EDIT MAP PIN',`<form id="editPinForm"><label class="form-field">NAME<input name="name" required value="${esc(pin.name)}"></label><label class="form-field">DETAILS<input name="note" value="${esc(pin.note||'')}"></label><div class="modal-actions"><button type="button" class="secondary-button" id="cancelModal">CANCEL</button><button class="pixel-button" type="submit">SAVE PIN</button></div></form>`);$('#editPinForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);pin.name=f.get('name').trim();pin.note=f.get('note').trim();save();persistPin(pin);drawMarkers();closeModal();toast('Pin updated.');};}
+  async function removePin(id){const pin=state.customPlaces.find(p=>String(p.id)===String(id));if(!pin)return;if(!confirm(`Delete the pin “${pin.name}”?`))return;state.customPlaces=state.customPlaces.filter(p=>String(p.id)!==String(id));save();drawMarkers();await deletePersistedPin(id);map.closePopup();toast('Pin deleted.');}
   window.addPlaceFromPopup=(name,cat)=>{if(!state.adventures.some(a=>a.title===`Visit ${name}`)){const a={id:crypto.randomUUID(),title:`Visit ${name}`,category:cat,place:name,description:'',completedBy:[],createdBy:currentUser};state.adventures.push(a);save();persistAdventure(a);toast('Added to your bucket list.')}};
 
   async function findMapPlace(query){
@@ -292,14 +305,21 @@
   // Two-stage entrance: player selection first, secret code second.
   $$('.character-choice').forEach(b=>b.addEventListener('click',()=>{showCodeStep(b.dataset.login)}));$('#backToPlayers').onclick=showPlayerStep;$('#loginForm').addEventListener('submit',e=>{e.preventDefault();login()});$('#logout').onclick=logout;
   $$('.nav-button').forEach(b=>b.onclick=()=>page(b.dataset.page));$$('[data-go]').forEach(b=>b.onclick=()=>page(b.dataset.go));$('#menuToggle').onclick=()=>$('#sidebar').classList.toggle('open');
-  // Window controls and dragging
-  $$('[data-min]').forEach(b=>b.onclick=()=>{$(`[data-window="${b.dataset.min}"]`).classList.toggle('minimized')});$$('[data-close]').forEach(b=>b.onclick=()=>{$(`[data-window="${b.dataset.close}"]`).classList.add('closed')});$('#restoreWindows').onclick=()=>{$$('.window').forEach(w=>w.classList.remove('closed','minimized'));toast('All map windows restored.')};$$('.window').forEach(w=>{const bar=$('.window-bar',w);bar.addEventListener('pointerdown',e=>{if(e.target.closest('button')||innerWidth<650)return;const r=w.getBoundingClientRect();dragged={w,x:e.clientX,y:e.clientY,left:r.left,top:r.top};bar.setPointerCapture(e.pointerId)});bar.addEventListener('pointermove',e=>{if(!dragged||dragged.w!==w)return;w.style.left=Math.max(0,dragged.left+e.clientX-dragged.x)+'px';w.style.top=Math.max(62,dragged.top+e.clientY-dragged.y)+'px';w.style.right='auto';w.style.bottom='auto'});bar.addEventListener('pointerup',()=>dragged=null);});
+  // Window controls: delegated handlers also cover dynamically rendered controls.
+  document.addEventListener('click',e=>{
+    const close=e.target.closest('[data-close]');if(close){const w=document.querySelector(`[data-window="${close.dataset.close}"]`);if(w)w.classList.add('closed');e.preventDefault();e.stopPropagation();return;}
+    const min=e.target.closest('[data-min]');if(min){const w=document.querySelector(`[data-window="${min.dataset.min}"]`);if(w)w.classList.toggle('minimized');e.preventDefault();e.stopPropagation();return;}
+    if(e.target.closest('#cancelModal')||e.target.closest('#modalClose')){closeModal();return;}
+    const edit=e.target.closest('[data-edit-pin]');if(edit){editPin(edit.dataset.editPin);return;}
+    const del=e.target.closest('[data-delete-pin]');if(del){removePin(del.dataset.deletePin);return;}
+  });
+  // Drag by pointer delta from the original window position; remove transforms while dragging.
+  $$('.window').forEach(w=>{const bar=$('.window-bar',w);if(!bar)return;bar.addEventListener('pointerdown',e=>{if(e.target.closest('button')||innerWidth<650)return;const r=w.getBoundingClientRect();dragged={w,pointerId:e.pointerId,x:e.clientX,y:e.clientY,left:r.left,top:r.top};w.style.transform='none';bar.setPointerCapture(e.pointerId);e.preventDefault();});bar.addEventListener('pointermove',e=>{if(!dragged||dragged.w!==w||dragged.pointerId!==e.pointerId)return;const left=Math.max(0,Math.min(innerWidth-w.offsetWidth,dragged.left+(e.clientX-dragged.x)));const top=Math.max(62,Math.min(innerHeight-w.offsetHeight,dragged.top+(e.clientY-dragged.y)));w.style.left=left+'px';w.style.top=top+'px';w.style.right='auto';w.style.bottom='auto';});const stop=()=>{if(dragged?.w===w)dragged=null;};bar.addEventListener('pointerup',stop);bar.addEventListener('pointercancel',stop);});
   // Main actions
-  $('#quickAdd').onclick=$('#addAdventure').onclick=addAdventureForm;$('#quickRandom').onclick=$('#questGenerator').onclick=generateQuest;$('#quickPin').onclick=()=>{pendingPin=true;page('map');toast('Click anywhere on the map to drop a custom pin.')};$('#modalClose').onclick=closeModal;$('#modalBackdrop').onclick=e=>{if(e.target.id==='modalBackdrop')closeModal()};
-  $('#bucketFilters').onclick=e=>{const b=e.target.closest('[data-filter]');if(!b)return;activeFilter=b.dataset.filter;$$('[data-filter]').forEach(x=>x.classList.toggle('active',x===b));renderBucket()};$('#adventureList').onclick=e=>{const done=e.target.closest('[data-complete]');if(done){completionForm(done.dataset.complete);return}const start=e.target.closest('[data-start-adventure]');if(start){const a=state.adventures.find(x=>x.id===start.dataset.startAdventure);if(a){state.currentActivity={id:a.id,type:'BUCKET LIST',title:a.title,startedBy:currentUser};save();toast('Added to CURRENTLY.')}}};$('#museumList').onclick=e=>{const b=e.target.closest('[data-museum]');if(!b)return;const name=b.dataset.museum;if(!state.adventures.some(a=>a.title===`Visit ${name}`)){const a={id:crypto.randomUUID(),title:`Visit ${name}`,category:'Museums',place:name,description:'',completedBy:[],createdBy:currentUser};state.adventures.push(a);save();persistAdventure(a);toast(`${name} added to your bucket list.`)}else toast('That museum is already on the list.')};
+  $('#quickAdd').onclick=$('#addAdventure').onclick=addAdventureForm;$('#quickRandom').onclick=$('#questGenerator').onclick=generateQuest;$('#modalBackdrop').onclick=e=>{if(e.target.id==='modalBackdrop')closeModal()};
+  document.addEventListener('click',e=>{const b=e.target.closest('#bucketFilters [data-filter]');if(!b)return;activeFilter=b.dataset.filter;$$('#bucketFilters [data-filter]').forEach(x=>x.classList.toggle('active',x===b));renderBucket();});$('#adventureList').onclick=e=>{const done=e.target.closest('[data-complete]');if(done){completionForm(done.dataset.complete);return}const start=e.target.closest('[data-start-adventure]');if(start){const a=state.adventures.find(x=>x.id===start.dataset.startAdventure);if(a){state.currentActivity={id:a.id,type:'BUCKET LIST',title:a.title,startedBy:currentUser};save();toast('Added to CURRENTLY.')}}};$('#museumList').onclick=e=>{const b=e.target.closest('[data-museum-choice]');if(!b)return;const task=state.adventures.find(a=>a.title.toLowerCase()==='go to a museum');if(!task)return toast('The museum task is missing.');task.place=task.place===b.dataset.museum?'':b.dataset.museum;save();persistAdventure(task);toast(task.place?`${task.place} selected for your museum task.`:'Museum choice cleared.');};
   $('#memoryFilters').onclick=e=>{const b=e.target.closest('[data-memory-filter]');if(!b)return;memoryFilter=b.dataset.memoryFilter;$$('[data-memory-filter]').forEach(x=>x.classList.toggle('active',x===b));renderScrapbook()};$('#photoUpload').onchange=async e=>{for(const file of [...e.target.files]){if(!file.type.startsWith('image/'))continue;const url=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});state.memories.push({id:crypto.randomUUID(),url,name:file.name,caption:'',by:currentUser,date:new Date().toLocaleDateString()})}save();e.target.value='';toast('Photo added to the scrapbook.')};$('#scrapbookGrid').addEventListener('change',e=>{const id=e.target.dataset.caption;if(!id)return;const m=state.memories.find(x=>x.id===id);if(m){m.caption=e.target.value;save()}});$('#scrapbookGrid').onclick=e=>{const b=e.target.closest('[data-delete-memory]');if(!b)return;const m=state.memories.find(x=>x.id===b.dataset.deleteMemory);if(m&&confirm('Remove this memory from this browser?')){state.memories=state.memories.filter(x=>x.id!==m.id);save()}};$$('.character-tabs button').forEach(b=>b.onclick=()=>renderCharacter(b.dataset.character));
-  // Modal cancel buttons are injected dynamically.
-  document.addEventListener('click',e=>{if(e.target.id==='cancelModal')closeModal()});
+  // Modal close/cancel controls are handled by the delegated click listener above.
   // Supabase persists the authenticated session on this device.
   renderBucket();renderQuests();renderScrapbook();
   (async()=>{

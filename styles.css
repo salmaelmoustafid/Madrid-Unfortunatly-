@@ -660,3 +660,33 @@ html,body{color:var(--ink)}
 .map-place-popup{min-width:170px;max-width:260px}
 .map-place-popup p{font:11px/1.4 Verdana,sans-serif;margin:6px 0;color:#30283a}
 .map-popup-add-pin{background:#72dce7;border:2px solid #211a2d;padding:7px 10px;color:#211a2d;font:bold 11px Verdana,sans-serif;cursor:pointer}
+
+
+/* V20 repair pass: map, sprites, controls, drag and bucket-list interactions */
+.map-wash,.map-character,.map-butterfly,.map-fairy,.butterfly-overlay,.fairy-wings{display:none!important;content:none!important}
+#map .leaflet-tile{filter:brightness(1.16) saturate(.72) contrast(.96)!important}
+.leaflet-container{background:#f7f7f5!important}
+.map-marker-icon{background:transparent!important;border:0!important}
+.map-marker-icon span{display:block;width:13px;height:13px;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px #2228}
+.quick-window{min-width:250px!important}
+.quick-characters{display:flex!important;align-items:flex-end!important;justify-content:space-evenly!important;gap:22px!important;padding:12px 8px 5px!important;background:#fff!important}
+.quick-character{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-end!important;gap:5px!important;min-width:72px!important}
+.quick-character .sprite-character{display:block!important;width:62px!important;height:82px!important;background-repeat:no-repeat!important;background-position:0 0!important;background-color:transparent!important;image-rendering:pixelated!important;flex:none!important}
+.quick-character .alisha-sprite{background-image:url('./alisha-sprites.png')!important;background-size:calc(82px * 6.8333) 82px!important;animation:alisha-idle 1.15s steps(6) infinite!important}
+.quick-character .eva-sprite{background-image:url('./eva-sprites.png')!important;background-size:calc(82px * 4.7593) 82px!important;animation:eva-idle 1.15s steps(4) infinite!important}
+@keyframes alisha-idle{from{background-position:0 0}to{background-position:-467px 0}}
+@keyframes eva-idle{from{background-position:0 0}to{background-position:-293px 0}}
+.quick-character span{font-size:9px!important}
+.window-bar{touch-action:none;user-select:none}
+.window-bar button{position:relative;z-index:5;pointer-events:auto!important;cursor:pointer!important}
+.window.closed{display:none!important}
+.window.minimized .window-body,.window.minimized .quick-characters{display:none!important}
+.filter-row .filter{position:relative;z-index:2;pointer-events:auto!important;cursor:pointer!important}
+.museum-button{cursor:pointer!important;color:#2d2635!important}
+.museum-button.selected{font-weight:bold;background:#fce6f2!important;color:#211a2d!important}
+.pin-actions{display:flex;gap:7px;margin-top:8px}
+.pin-actions button{padding:5px 8px;border:1px solid #30263a;background:#fff;color:#211a2d;font-size:10px;font-weight:bold;cursor:pointer}
+.modal-backdrop{pointer-events:auto!important}
+.modal,.modal *{pointer-events:auto}
+.modal-title button,.modal-actions button{cursor:pointer!important;position:relative;z-index:2}
+@media(max-width:650px){.quick-window{width:205px!important;min-width:0!important}.quick-characters{gap:10px!important}.quick-character .sprite-character{transform:scale(.9);transform-origin:bottom center}}
