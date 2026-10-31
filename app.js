@@ -1,3 +1,4 @@
+
 /* Madrid, unfortunately. — static edition with Supabase-backed player authentication. Shared data sync is the next integration stage. */
 (() => {
   const $ = (s, root=document) => root.querySelector(s), $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -21,191 +22,468 @@
     'Ask for a recommendation and actually follow it.',
     'Find a tiny hidden square and sit there for ten minutes.',
     'Find a mural you have never noticed before.',
-    'Choose a café based only on its name. Live with the consequences.',
-    'Take a photo of the most Madrid-looking balcony you can find.',
-    'Visit a neighbourhood you rarely explore.',
-    'Find a building that looks like it has a scandalous backstory.',
-    'Walk for fifteen minutes without checking your phone.',
-    'Find the best people-watching spot nearby.',
-    'Try a pastry you cannot pronounce confidently.',
-    'Locate a tiny independent shop and go inside.',
-    'Find a public fountain and make a very serious wish.',
-    'Take a photo of an unusually beautiful shadow.',
-    'Find the oldest-looking door on your route.',
-    'Listen to a song while walking somewhere new.',
-    'Find a street with a name you want explained.',
-    'Visit a market and identify one thing you have never eaten.',
-    'Pick a random metro stop and explore the area around it.',
-    'Find a quiet place in the city and do absolutely nothing.',
-    'Spot three examples of beautiful typography in the streets.',
-    'Find a place with a view and stay for five minutes.',
-    'Make a tiny itinerary for a future day out.',
-    'Find an interesting statue and invent its inner monologue.',
-    'Take the scenic route, even if it makes no sense.',
-    'Find a shop window that deserves its own exhibition.',
-    'Find a street musician and stay for one whole song.',
-    'Choose a destination by tossing a coin at the next crossroads.'
+    'Buy a pastry from a bakery you have never tried.',
+    'Take a photo of something that looks like an album cover.',
+    'Go somewhere without checking the reviews first.',
+    'Find a place that feels like a film set.'
   ];
-  const places=[
-    ['Museo del Prado',40.4138,-3.6921,'Museums'],['Museo Reina Sofía',40.4086,-3.6940,'Museums'],['Museo Thyssen-Bornemisza',40.4160,-3.6947,'Museums'],['Parque del Retiro',40.4153,-3.6844,'Explore'],['Puerta del Sol',40.4169,-3.7035,'Explore'],['El Rastro',40.4087,-3.7074,'Food & Drink'],['Malasaña',40.4260,-3.7040,'Nightlife'],['Chueca',40.4220,-3.6970,'Nightlife'],['La Latina',40.4110,-3.7080,'Explore']
-  ];
-  let state = load(), currentUser='', selectedCharacter='alisha', activeFilter='All', memoryFilter='All', map=null, markers=[], pendingPin=false, dragged=null, toastTimer;
-  const authPlayers = { alisha: 'alisha@madrid-unfortunately.invalid', eva: 'eva@madrid-unfortunately.invalid' };
-  const supabaseClient = window.supabase && window.MADRID_SUPABASE_CONFIG?.url && window.MADRID_SUPABASE_CONFIG?.publishableKey
-    ? window.supabase.createClient(window.MADRID_SUPABASE_CONFIG.url, window.MADRID_SUPABASE_CONFIG.publishableKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
+
+  const authPlayers = {
+    alisha: 'alisha@madrid-unfortunately.invalid',
+    eva: 'eva@madrid-unfortunately.invalid'
+  };
+
+  const SUPABASE_URL = 'https://aqacqrqnrfryezhrvgtl.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_BkmphdZNnUPwGwn1vSsbyQ_L9BAylwo';
+
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
     : null;
-  function load(){try{const x=JSON.parse(localStorage.getItem(STORE));if(x){const data={...x,adventures:x.adventures||initialAdventures,quests:x.quests||[],memories:x.memories||[],customPlaces:x.customPlaces||[],currentActivity:x.currentActivity||null,profilePhotos:x.profilePhotos||{}};const museumTask=data.adventures.find(a=>a.title?.toLowerCase()==='go to a museum');if(museumTask){museumTask.place='';data.adventures=data.adventures.filter(a=>a.id===museumTask.id||!(a.category==='Museums'&&(/^(visit )?museo/i.test(a.title)||museums.includes(a.title))));}return data;}}catch(e){console.warn('Could not read saved adventure data',e)}return {adventures:initialAdventures,quests:[],memories:[],customPlaces:[],currentActivity:null,profilePhotos:{}}}
-  function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(err){console.error('Local save failed',err);toast('Storage is full. Try a smaller profile photo.')}updateStats();renderLatest();renderBucket();renderQuests();renderScrapbook();renderCurrentActivity();}
-  const playerEmail = {alisha:'alisha@madrid-unfortunately.invalid',eva:'eva@madrid-unfortunately.invalid'};
-  let realtimeChannel=null, sharedSyncBusy=false;
-  async function persistAdventure(a){
-    if(!supabaseClient || !currentUser) return;
-    const row={id:uuidOrNull(a.id),title:a.title,category:a.category||'Explore',place:a.place||null,description:a.description||null,status:(a.completedBy||[]).length?'completed':'planned',created_by:a.createdBy||currentUser,completed_by:a.completedBy||[],completed_at:(a.completedBy||[]).length?(a.completedAt||new Date().toISOString()):null,completion_comment:a.completionComment||null};
-    if(!row.id) delete row.id;
-    const {error}=await supabaseClient.from('adventures').upsert(row);
-    if(error){console.error(error);toast('Could not sync adventure: '+error.message)}
-  }
-  function uuidOrNull(id){return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id||''))?id:null}
-  async function persistPin(pin){
-    if(!supabaseClient || !currentUser) return;
-    const row={id:uuidOrNull(pin.id),title:pin.name||pin.title||'Custom place',category:pin.category||'Custom',latitude:Number(pin.lat),longitude:Number(pin.lng),note:pin.note||null,created_by:currentUser};
-    if(!row.id) delete row.id;
-    const {error}=await supabaseClient.from('map_pins').upsert(row);
-    if(error){console.error(error);toast('Could not sync map pin: '+error.message)}
-  }
-  async function deletePersistedPin(id){if(!supabaseClient||!currentUser||!uuidOrNull(id))return;const {error}=await supabaseClient.from('map_pins').delete().eq('id',id);if(error){console.error(error);toast('Could not delete shared pin: '+error.message);}}
-  async function persistSideQuest(q){
-    if(!supabaseClient || !currentUser) return;
-    const row={id:uuidOrNull(q.id),title:q.title,icon:q.icon||'✦',points:q.points||10,completed_by:(q.completedBy||[currentUser])[0]||currentUser,completion_comment:q.completionComment||null};
-    if(!row.id) delete row.id;
-    const {error}=await supabaseClient.from('side_quests').upsert(row);
-    if(error){console.error(error);toast('Could not sync side quest: '+error.message)}
-  }
-  async function syncSharedData(){
-    if(!supabaseClient || !currentUser || sharedSyncBusy) return;
-    sharedSyncBusy=true;
+
+  let state = load();
+  let currentPlayer = null;
+  let map = null;
+  let markers = [];
+  let activeBucket = 'all';
+  let activeCharacter = 'alisha';
+
+  function load(){
     try{
-      const [aRes,qRes,pRes]=await Promise.all([
-        supabaseClient.from('adventures').select('*').order('created_at',{ascending:true}),
-        supabaseClient.from('side_quests').select('*').order('completed_at',{ascending:true}),
-        supabaseClient.from('map_pins').select('*').order('created_at',{ascending:true})
-      ]);
-      for(const r of [aRes,qRes,pRes]) if(r.error) throw r.error;
-      // First authenticated visit: move this browser's existing list into the shared database.
-      if(!aRes.data.length && state.adventures.length){
-        for(const a of state.adventures) await persistAdventure(a);
-        const {data,error}=await supabaseClient.from('adventures').select('*').order('created_at',{ascending:true});
-        if(error) throw error;
-        aRes.data=data;
+      const saved=JSON.parse(localStorage.getItem(STORE));
+      if(saved)return {...saved,adventures:saved.adventures||initialAdventures,quests:saved.quests||seedQuests.map((q,i)=>({id:'q'+i,title:q[0],emoji:q[1],points:q[2],completedBy:[]})),memories:saved.memories||[],pins:saved.pins||[],profilePhotos:saved.profilePhotos||{}};
+    }catch(error){}
+    return {
+      adventures:initialAdventures,
+      quests:seedQuests.map((q,i)=>({id:'q'+i,title:q[0],emoji:q[1],points:q[2],completedBy:[]})),
+      memories:[],
+      pins:[],
+      profilePhotos:{},
+      players:{
+        alisha:{points:0,completed:0},
+        eva:{points:0,completed:0}
       }
-      if(!qRes.data.length && state.quests.length){
-        for(const q of state.quests) await persistSideQuest(q);
-        const {data,error}=await supabaseClient.from('side_quests').select('*').order('completed_at',{ascending:true});
-        if(error) throw error;
-        qRes.data=data;
-      }
-      if(!pRes.data.length && state.customPlaces.length){
-        for(const pin of state.customPlaces) await persistPin(pin);
-        const {data,error}=await supabaseClient.from('map_pins').select('*').order('created_at',{ascending:true});
-        if(error) throw error;
-        pRes.data=data;
-      }
-      state.adventures=(aRes.data||[]).map(r=>({id:r.id,title:r.title,category:r.category,place:r.place||'',description:r.description||'',completedBy:r.completed_by||[],createdBy:r.created_by,completedAt:r.completed_at,completionComment:r.completion_comment||''}));
-      const museumUmbrella=state.adventures.find(a=>a.title.toLowerCase()==='go to a museum');
-      if(museumUmbrella){const duplicates=state.adventures.filter(a=>a.id!==museumUmbrella.id&&a.category==='Museums'&&(/^(visit )?museo/i.test(a.title)||museums.includes(a.title)));for(const d of duplicates){state.adventures=state.adventures.filter(a=>a.id!==d.id);if(uuidOrNull(d.id))await supabaseClient.from('adventures').delete().eq('id',d.id);}}
-      state.quests=(qRes.data||[]).map(r=>({id:r.id,title:r.title,icon:r.icon||'✦',points:r.points||0,completedBy:[r.completed_by],detail:'Side quest',completionComment:r.completion_comment||''}));
-      state.customPlaces=(pRes.data||[]).map(r=>({id:r.id,name:r.title,lat:r.latitude,lng:r.longitude,category:r.category,note:r.note}));
-      localStorage.setItem(STORE,JSON.stringify(state));
-      updateStats();renderLatest();renderBucket();renderQuests();renderScrapbook();renderCurrentActivity();if(map)drawMarkers();
-      $('#statusText').textContent='SIGNED IN · SHARED DATA SYNCED';
-      startRealtime();
-    }catch(err){
-      console.error('Shared data sync failed:',err);
-      $('#statusText').textContent='SIGNED IN · SYNC ERROR';
-      toast('Supabase sync failed. Check database permissions.');
-    }finally{sharedSyncBusy=false}
-  }
-  function startRealtime(){
-    if(!supabaseClient || realtimeChannel) return;
-    realtimeChannel=supabaseClient.channel('madrid-shared-data')
-      .on('postgres_changes',{event:'*',schema:'public',table:'adventures'},()=>syncSharedData())
-      .on('postgres_changes',{event:'*',schema:'public',table:'side_quests'},()=>syncSharedData())
-      .on('postgres_changes',{event:'*',schema:'public',table:'map_pins'},()=>syncSharedData())
-      .subscribe();
+    };
   }
 
-  function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600)}
-  function showModal(title,html){$('#modalTitle').textContent=title;$('#modalContent').innerHTML=html;$('#modalBackdrop').classList.add('open')}
-  function closeModal(){$('#modalBackdrop').classList.remove('open');$('#modalContent').innerHTML=''}
-  function page(id){$$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+id));$$('.nav-button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));$('#sidebar').classList.remove('open');if(id==='map'&&map)setTimeout(()=>map.invalidateSize(),120);if(id==='bucket')renderBucket();if(id==='quests')renderQuests();if(id==='scrapbook')renderScrapbook();if(id==='characters')renderCharacter(selectedCharacter)}
-  function updateStats(){const done=state.adventures.filter(a=>a.completedBy?.length).length;$('#progressCount').textContent=`${done} / ${state.adventures.length}`;$('#progressFill').style.width=(state.adventures.length?done/state.adventures.length*100:0)+'%';$('#plannedCount').textContent=state.adventures.length-done;$('#doneCount').textContent=done;$('#questCount').textContent=state.quests.length;$('#memoryCount').textContent=state.memories.length}
-  function renderLatest(){const el=$('#latestMemories');if(!state.memories.length){el.innerHTML='<p class="empty-small">No memories yet. The evidence will arrive eventually.</p>';return}el.innerHTML=state.memories.slice(-3).reverse().map(m=>`<div class="latest-item"><img src="${m.url}" alt=""><small>${esc(m.caption||m.name||'A Madrid memory')}</small></div>`).join('')}
-  function suggestedComment(title, category=''){
-    const t=(title||'').toLowerCase(), c=(category||'').toLowerCase();
-    if(/museum|prado|reina sof[ií]a|thyssen/.test(t)) return 'You voluntarily entered an educational building. Look at you.';
-    if(/club|rooftop|bar|nightlife|concert|party/.test(t)||c==='nightlife') return 'Sleep schedule: officially a historical document.';
-    if(/picnic|retiro|park|walk|street|explore/.test(t)||c==='explore') return 'Great, you left the house. Character development.';
-    if(/food|cuisine|restaurant|eat|try|order/.test(t)||c==='food & drink') return 'A brave culinary decision. The stomach has been informed.';
-    if(/market|rastro|shop|bookshop/.test(t)) return 'You went shopping. The economy thanks you.';
-    if(/day trip|train|travel/.test(t)) return 'You left the city limits. Madrid will manage without you.';
-    if(/cat|photo|picture/.test(t)) return 'You collected evidence. The paparazzi era begins.';
-    if(/spanish|language|speak/.test(t)) return 'You spoke Spanish all day? Who are you trying to impress?';
-    if(/spontaneous|random|unplanned/.test(t)) return 'You made plans without a plan. Somehow, it worked.';
-    if(/playlist|music|song/.test(t)) return 'The soundtrack has been secured. Critics are pending.';
-    const options=[
-      'Against all odds, you actually did the thing.',
-      'Task completed. Please update your very important imaginary CV.',
-      'Look at you, following through on a plan.',
-      'A questionable use of your time. You would absolutely do it again.',
-      'You came, you saw, you made it everyone’s problem.',
-      'Another extremely niche achievement unlocked. Well done, you.'
-    ];
-    let hash=0; for(let i=0;i<(title||'').length;i++) hash=(hash*31+title.charCodeAt(i))|0;
-    return options[Math.abs(hash)%options.length];
+  function save(){
+    localStorage.setItem(STORE,JSON.stringify(state));
   }
-  function renderBucket(){
-    const list=$('#adventureList');if(!list)return;
-    const rows=state.adventures.filter(a=>activeFilter==='All'||a.category===activeFilter);
-    list.innerHTML=rows.map(a=>{const done=a.completedBy?.length;return `<article class="adventure-card ${done?'done':''}"><button class="quest-check" data-complete="${esc(a.id)}" aria-label="Mark complete">${done?'✓':''}</button><div class="adventure-copy"><b>${esc(a.title)}</b><small>${esc(a.category)}${a.place?' · '+esc(a.place):''}</small>${a.description?`<p>${esc(a.description)}</p>`:''}${done?`<p class="done-stamp">✓ COMPLETED BY ${a.completedBy.map(x=>x.toUpperCase()).join(' + ')}</p>`:`<button class="mini-action" data-start-adventure="${esc(a.id)}">CURRENTLY DOING THIS →</button>`}</div></article>`}).join('')||'<div class="empty-state">Nothing in this category yet.</div>';
-    const museumTask=state.adventures.find(a=>a.title.toLowerCase()==='go to a museum');
-    $('#museumList').innerHTML=museums.map(m=>`<button type="button" class="museum-button ${museumTask?.place===m?'selected':''}" data-museum-choice="${esc(m)}">${esc(m)}${museumTask?.place===m?' ✓':''}</button>`).join('');
+
+  function escapeHTML(value){
+    return String(value??'').replace(/[&<>"']/g,char=>({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    })[char]);
   }
-  function renderQuests(){const el=$('#questHistory');if(!el)return;if(!state.quests.length){el.innerHTML='<div class="empty-state"><div style="font-size:28px">✧</div><b>NO SIDE QUESTS COMPLETED… YET.</b><p>Generate a random side quest from Quick Actions on the map. Once completed, it will be recorded here.</p></div>';return}el.innerHTML=[...state.quests].reverse().map(q=>`<article class="quest-row"><span class="quest-icon">${q.icon||'✦'}</span><div><b>${esc(q.title)}</b><small>${esc(q.detail||'Side quest')} · ${esc((q.completedBy||[]).map(x=>x.toUpperCase()).join(' + ')||'Completed')}</small>${q.completionComment?`<p class="completion-snark">“${esc(q.completionComment)}”</p>`:''}</div><span class="points">+${q.points||0} PTS</span></article>`).join('')}
-  function renderScrapbook(){const el=$('#scrapbookGrid');if(!el){return}const rows=state.memories.filter(m=>memoryFilter==='All'||m.by===memoryFilter);el.innerHTML=rows.length?rows.map(m=>`<article class="memory-card"><img src="${m.url}" alt="${esc(m.caption||'Memory')}"><input data-caption="${m.id}" value="${esc(m.caption||'') }" placeholder="Add a caption…"><div class="memory-meta"><span>${(m.by||'').toUpperCase()} · ${esc(m.date||'')}</span><button class="text-link" data-delete-memory="${m.id}">REMOVE</button></div></article>`).join(''):'<div class="empty-state" style="grid-column:1/-1"><div style="font-size:28px">ʚɞ</div><b>THE SCRAPBOOK IS WAITING.</b><p>Upload your first photo. No sample memories — only your actual evidence.</p></div>'}
-  function compressImage(file,maxSide=480,quality=.78){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=reject;reader.onload=()=>{const img=new Image();img.onerror=reject;img.onload=()=>{const scale=Math.min(1,maxSide/Math.max(img.width,img.height));const canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',quality));};img.src=reader.result;};reader.readAsDataURL(file);});}
-  function renderCharacter(who){
-    selectedCharacter=who;$$('.character-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.character===who));
-    const name=who==='alisha'?'Alisha':'Eva', photo=state.profilePhotos?.[who]||'';
-    const done=state.adventures.filter(a=>(a.completedBy||[]).includes(who)).length;
-    const questCount=state.quests.filter(q=>(q.completedBy||[]).includes(who)).length;
-    const photoCount=state.memories.filter(m=>m.by===who||m.by==='both').length;
-    const achievements=[['First steps','Complete your first adventure',done>=1],['Culture vulture','Visit a museum',state.adventures.some(a=>a.category==='Museums'&&(a.completedBy||[]).includes(who))],['Out after dark','Complete a nightlife adventure',state.adventures.some(a=>a.category==='Nightlife'&&(a.completedBy||[]).includes(who))],['Side quester','Complete a side quest',questCount>=1],['Memory collector','Add a scrapbook memory',photoCount>=1],['Madrid local-ish','Complete five adventures',done>=5]];
-    $('#characterProfile').innerHTML=`<div class="profile-art"><div class="profile-avatar">${photo?`<img src="${photo}" alt="${name} profile picture">`:'<span>ʚɞ</span>'}</div><label class="pixel-button profile-upload">＋ ADD PICTURE<input id="profilePhotoUpload" type="file" accept="image/*" hidden></label></div><div class="profile-info"><p class="eyebrow">PLAYER PROFILE</p><h2>${name.toUpperCase()}</h2><div class="stat-grid"><div><b>${done}</b><small>ADVENTURES</small></div><div><b>${questCount}</b><small>SIDE QUESTS</small></div><div><b>${photoCount}</b><small>MEMORIES</small></div></div><h3 class="achievement-heading">ACHIEVEMENTS</h3><div class="achievement-grid">${achievements.map(a=>`<div class="achievement ${a[2]?'':'locked'}"><b>${a[2]?'✧':'□'} ${a[0]}</b>${a[1]}</div>`).join('')}</div></div>`;
-    $('#profilePhotoUpload').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const url=await compressImage(f,480,0.78);state.profilePhotos=state.profilePhotos||{};state.profilePhotos[who]=url;save();renderCharacter(who);toast('Profile picture saved on this device.')}catch(err){console.error(err);toast('Could not save that picture. Try another image.')}};
+
+  function playerName(player){
+    return player==='alisha'?'Alisha':'Eva';
   }
-  function renderCurrentActivity(){
-    const el=$('#currentActivity');if(!el)return;const a=state.currentActivity;
-    if(!a){el.innerHTML='<p class="empty-small">Nothing underway. Pick an adventure or accept a side quest.</p>';return}
-    el.innerHTML=`<div class="current-label">${esc(a.type.toUpperCase())}</div><b class="current-title">${esc(a.title)}</b><small>Started by ${(a.startedBy||currentUser).toUpperCase()}</small><div class="current-actions"><button class="mini-action" id="finishCurrent">MARK COMPLETE</button><button class="mini-action muted" id="clearCurrent">CLEAR</button></div>`;
-    $('#finishCurrent').onclick=()=>{
-      if(a.type==='BUCKET LIST'){const item=state.adventures.find(x=>x.id===a.id);if(item){showModal('ADVENTURE COMPLETED',`<p>Who completed this adventure?</p><div class="completion-options"><label><input type="radio" name="who" value="alisha"> Alisha</label><label><input type="radio" name="who" value="eva"> Eva</label><label><input type="radio" name="who" value="both"> Both</label></div><div class="modal-actions"><button class="secondary-button" id="cancelModal">CANCEL</button><button class="pixel-button" id="confirmDone">CONFIRM</button></div>`);$('#confirmDone').onclick=()=>{const who=$('input[name="who"]:checked');if(!who)return toast('Choose who completed it.');item.completedBy=who.value==='both'?['alisha','eva']:[who.value];item.completedAt=new Date().toISOString();state.currentActivity=null;save();persistAdventure(item);closeModal();toast('Adventure completed!')}}}
-      else {showModal('SIDE QUEST COMPLETED',`<p style="font: bold 15px Georgia,serif">${esc(a.title)}</p><label class="form-field">YOUR COMMENT<input id="completionComment" maxlength="180" value="${esc(suggestedComment(a.title,'Side Quest'))}"></label><div class="modal-actions"><button class="secondary-button" id="cancelModal">CANCEL</button><button class="pixel-button" id="saveSideQuest">SAVE COMPLETION</button></div>`);$('#saveSideQuest').onclick=()=>{const completedQuest={id:crypto.randomUUID(),title:a.title,detail:'Side quest',icon:'✦',points:10,completedBy:[currentUser],completionComment:$('#completionComment').value.trim()||suggestedComment(a.title,'Side Quest')};state.quests.push(completedQuest);state.currentActivity=null;save();persistSideQuest(completedQuest);closeModal();toast('Quest completed. Historic, really.')}}
-    };
-    $('#clearCurrent').onclick=()=>{state.currentActivity=null;save();toast('Current activity cleared.')};
+
+  function playerData(player){
+    if(!state.players[player])state.players[player]={points:0,completed:0};
+    return state.players[player];
   }
-  function addAdventureForm(){showModal('ADD AN ADVENTURE',`<form id="adventureForm"><label class="form-field">ADVENTURE NAME<input name="title" required placeholder="What should we do?"></label><label class="form-field">CATEGORY<select name="category">${['Museums','Nightlife','Explore','Food & Drink','Culture','Chaotic'].map(x=>`<option>${x}</option>`).join('')}</select></label><label class="form-field">PLACE (OPTIONAL)<input name="place" placeholder="Specific place in Madrid"></label><label class="form-field">NOTES (OPTIONAL)<textarea name="description" placeholder="Any details or ideas…"></textarea></label><div class="modal-actions"><button type="button" class="secondary-button" id="cancelModal">CANCEL</button><button class="pixel-button">ADD TO BUCKET LIST</button></div></form>`);$('#adventureForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);state.adventures.push({id:crypto.randomUUID(),title:f.get('title').trim(),category:f.get('category'),place:f.get('place').trim(),description:f.get('description').trim(),completedBy:[],createdBy:currentUser});const added=state.adventures[state.adventures.length-1];save();persistAdventure(added);if(map)drawMarkers();closeModal();toast('Adventure added. Make it happen.')}}
-  function completionForm(id){
-    const a=state.adventures.find(x=>x.id===id);if(!a)return;
-    showModal('ADVENTURE COMPLETED',`<p style="font: bold 15px Georgia,serif">${esc(a.title)}</p><p style="font-size:11px">Who completed this adventure?</p><div class="completion-options"><label><input type="radio" name="who" value="alisha" ${a.completedBy?.includes('alisha')?'checked':''}> Alisha</label><label><input type="radio" name="who" value="eva" ${a.completedBy?.includes('eva')?'checked':''}> Eva</label><label><input type="radio" name="who" value="both" ${a.completedBy?.length===2?'checked':''}> Both</label></div><label class="form-field">YOUR COMMENT<input id="completionComment" maxlength="180" value="${esc(a.completionComment||suggestedComment(a.title,a.category))}"></label><div class="modal-actions"><button class="secondary-button" id="cancelModal">CANCEL</button><button class="pixel-button" id="confirmDone">CONFIRM</button></div>`);
-    $('#confirmDone').onclick=()=>{const who=$('input[name="who"]:checked');if(!who){toast('Choose who completed it.');return}a.completedBy=who.value==='both'?['alisha','eva']:[who.value];a.completedAt=new Date().toISOString();a.completionComment=$('#completionComment').value.trim()||suggestedComment(a.title,a.category);save();persistAdventure(a);closeModal();if(map)drawMarkers();toast(a.completionComment)};
+
+  function notify(message){
+    const el=$('#toast');
+    if(!el)return;
+    el.textContent=message;
+    el.classList.add('show');
+    clearTimeout(notify.timer);
+    notify.timer=setTimeout(()=>el.classList.remove('show'),2600);
   }
-  function generateQuest(){const idea=sideIdeas[Math.floor(Math.random()*sideIdeas.length)];showModal('RANDOM SIDE QUEST',`<div style="text-align:center;padding:10px"><div style="font-size:35px">🎲</div><p class="eyebrow">YOUR NEXT QUESTIONABLE MISSION</p><h2 style="font: bold 20px Georgia,serif;line-height:1.4">${esc(idea)}</h2><p style="font-size:10px;color:#81768b">Worth 10 points · Complete it to add it to Side Quests.</p></div><div class="modal-actions"><button class="secondary-button" id="rerollQuest">REROLL</button><button class="pixel-button" id="acceptQuest">ACCEPT QUEST</button></div>`);$('#rerollQuest').onclick=generateQuest;$('#acceptQuest').onclick=()=>{state.currentActivity={id:crypto.randomUUID(),type:'SIDE QUEST',title:idea,startedBy:currentUser};save();closeModal();toast('Added to CURRENTLY. Go forth.')};}
-  function initMap(){if(!window.L)return;if(map){setTimeout(()=>map.invalidateSize(),120);drawMarkers();return}map=L.map('map',{zoomControl:true}).setView([40.4168,-3.7038],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:19}).addTo(map);map.on('click',async e=>{
+
+  async function login(player){
+    if(!supabaseClient){
+      $('#loginError').textContent='Authentication setup is incomplete.';
+      return;
+    }
+    const email=authPlayers[player];
+    const password=$('#loginPassword').value;
+    if(!password){
+      $('#loginError').textContent='Please enter your password.';
+      return;
+    }
+    $('#loginError').textContent='Signing in…';
+    const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+    if(error){
+      $('#loginError').textContent=error.message;
+      return;
+    }
+    await openApp(player);
+  }
+
+  async function openApp(player){
+    currentPlayer=player;
+    activeCharacter=player;
+    $('#loginScreen')?.classList.add('hidden');
+    $('#app')?.classList.remove('hidden');
+    $('#currentPlayerName').textContent=playerName(player);
+    $('#welcomeName').textContent=playerName(player);
+    renderAll();
+    initMap();
+  }
+
+  async function logout(){
+    if(supabaseClient)await supabaseClient.auth.signOut();
+    currentPlayer=null;
+    $('#app')?.classList.add('hidden');
+    $('#loginScreen')?.classList.remove('hidden');
+    $('#loginPassword').value='';
+  }
+
+  function renderAll(){
+    renderStats();
+    renderAdventures();
+    renderQuests();
+    renderScrapbook();
+    renderPins();
+    renderCharacter(activeCharacter);
+    renderBucket();
+  }
+
+  function renderStats(){
+    const alisha=playerData('alisha');
+    const eva=playerData('eva');
+    $('#alishaPoints').textContent=alisha.points;
+    $('#evaPoints').textContent=eva.points;
+    $('#alishaCompleted').textContent=alisha.completed;
+    $('#evaCompleted').textContent=eva.completed;
+    $('#totalAdventures').textContent=state.adventures.length;
+    $('#totalPins').textContent=state.pins.length;
+  }
+
+  function renderAdventures(){
+    const list=$('#adventureList');
+    if(!list)return;
+    list.innerHTML=state.adventures.map(adventure=>{
+      const completed=adventure.completedBy||[];
+      return `
+        <article class="adventure-card">
+          <div class="adventure-card-main">
+            <div class="adventure-category">${escapeHTML(adventure.category||'Adventure')}</div>
+            <h3>${escapeHTML(adventure.title)}</h3>
+            ${adventure.place?`<p>${escapeHTML(adventure.place)}</p>`:''}
+            ${adventure.description?`<p>${escapeHTML(adventure.description)}</p>`:''}
+            <div class="completion-label">
+              ${completed.length?`Completed by ${completed.map(playerName).join(' and ')}`:'Not completed yet'}
+            </div>
+          </div>
+          <div class="adventure-actions">
+            ${['alisha','eva'].map(player=>`
+              <button class="pixel-button ${completed.includes(player)?'completed':''}" data-complete-adventure="${escapeHTML(adventure.id)}" data-player="${player}">
+                ${completed.includes(player)?'✓':'+'} ${playerName(player)}
+              </button>
+            `).join('')}
+          </div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  function completeAdventure(id,player){
+    const adventure=state.adventures.find(a=>a.id===id);
+    if(!adventure)return;
+    adventure.completedBy=adventure.completedBy||[];
+    if(adventure.completedBy.includes(player)){
+      notify('Already completed!');
+      return;
+    }
+    adventure.completedBy.push(player);
+    playerData(player).completed++;
+    playerData(player).points+=10;
+    save();
+    renderAll();
+    notify(`${playerName(player)} completed an adventure! +10 points`);
+  }
+
+  function addAdventure(){
+    const title=$('#adventureTitle').value.trim();
+    if(!title){
+      notify('Give your adventure a name first.');
+      return;
+    }
+    state.adventures.push({
+      id:'a'+Date.now(),
+      title,
+      category:$('#adventureCategory').value,
+      place:$('#adventurePlace').value.trim(),
+      description:$('#adventureDescription').value.trim(),
+      completedBy:[]
+    });
+    save();
+    renderAdventures();
+    renderStats();
+    $('#adventureModal').classList.add('hidden');
+    $('#adventureForm').reset();
+    notify('Adventure added!');
+  }
+
+  function renderQuests(){
+    const list=$('#questList');
+    if(!list)return;
+    list.innerHTML=state.quests.map(quest=>{
+      const completed=quest.completedBy||[];
+      return `
+        <article class="quest-card">
+          <span class="quest-emoji">${escapeHTML(quest.emoji||'⭐')}</span>
+          <div class="quest-content">
+            <h3>${escapeHTML(quest.title)}</h3>
+            <p>${quest.points} points</p>
+            <div class="quest-completions">
+              ${completed.map(playerName).join(' · ')||'Waiting to be completed'}
+            </div>
+          </div>
+          <div class="quest-actions">
+            ${['alisha','eva'].map(player=>`
+              <button class="pixel-button" data-complete-quest="${escapeHTML(quest.id)}" data-player="${player}" ${completed.includes(player)?'disabled':''}>
+                ${completed.includes(player)?'✓':playerName(player)}
+              </button>
+            `).join('')}
+          </div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  function completeQuest(id,player){
+    const quest=state.quests.find(q=>q.id===id);
+    if(!quest)return;
+    quest.completedBy=quest.completedBy||[];
+    if(quest.completedBy.includes(player))return;
+    quest.completedBy.push(player);
+    playerData(player).points+=quest.points;
+    playerData(player).completed++;
+    save();
+    renderAll();
+    notify(`${playerName(player)} earned ${quest.points} points!`);
+  }
+
+  function addQuest(){
+    const title=$('#questTitle').value.trim();
+    if(!title)return notify('Give your side quest a name.');
+    state.quests.push({
+      id:'q'+Date.now(),
+      title,
+      emoji:$('#questEmoji').value||'⭐',
+      points:Number($('#questPoints').value)||5,
+      completedBy:[]
+    });
+    save();
+    renderQuests();
+    $('#questModal').classList.add('hidden');
+    $('#questForm').reset();
+    notify('Side quest added!');
+  }
+
+  function renderScrapbook(){
+    const grid=$('#scrapbookGrid');
+    if(!grid)return;
+    grid.innerHTML=state.memories.map(memory=>`
+      <article class="memory-card">
+        ${memory.image?`<img src="${memory.image}" alt="${escapeHTML(memory.caption||'Memory')}">`:''}
+        <p>${escapeHTML(memory.caption||'A Madrid memory')}</p>
+        <small>${escapeHTML(memory.by||'Alisha and Eva')}</small>
+        <button class="delete-memory" data-delete-memory="${escapeHTML(memory.id)}" aria-label="Delete memory">×</button>
+      </article>
+    `).join('');
+    $('#memoryCount').textContent=state.memories.length;
+  }
+
+  function compressImage(file){
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const image=new Image();
+        image.onload=()=>{
+          const canvas=document.createElement('canvas');
+          const max=1100;
+          const ratio=Math.min(1,max/Math.max(image.width,image.height));
+          canvas.width=Math.round(image.width*ratio);
+          canvas.height=Math.round(image.height*ratio);
+          canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+          resolve(canvas.toDataURL('image/jpeg',0.78));
+        };
+        image.onerror=reject;
+        image.src=reader.result;
+      };
+      reader.onerror=reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function addMemory(){
+    const file=$('#memoryImage').files[0];
+    const caption=$('#memoryCaption').value.trim();
+    if(!file&&!caption)return notify('Add a photo or a caption first.');
+    let image='';
+    if(file){
+      try{image=await compressImage(file)}
+      catch(error){return notify('Could not load that image.')}
+    }
+    state.memories.unshift({
+      id:'m'+Date.now(),
+      image,
+      caption,
+      by:playerName(currentPlayer||'alisha'),
+      createdAt:new Date().toISOString()
+    });
+    save();
+    renderScrapbook();
+    $('#memoryModal').classList.add('hidden');
+    $('#memoryForm').reset();
+    notify('Memory saved!');
+  }
+
+  function renderPins(){
+    const list=$('#pinList');
+    if(list){
+      list.innerHTML=state.pins.map(pin=>`
+        <div class="pin-list-item">
+          <div><strong>${escapeHTML(pin.name||'A place in Madrid')}</strong><small>${escapeHTML(pin.address||'')}</small></div>
+          <button data-delete-pin="${escapeHTML(pin.id)}" aria-label="Delete pin">×</button>
+        </div>
+      `).join('');
+    }
+    renderStats();
+    drawMarkers();
+  }
+
+  function addPin(pin){
+    state.pins.push({
+      id:'p'+Date.now(),
+      name:pin.name||'A place in Madrid',
+      address:pin.address||'',
+      lat:pin.lat,
+      lng:pin.lng,
+      by:currentPlayer||'alisha'
+    });
+    save();
+    renderPins();
+    notify('Place saved to your map!');
+  }
+
+  function deletePin(id){
+    state.pins=state.pins.filter(pin=>pin.id!==id);
+    save();
+    renderPins();
+    notify('Pin removed.');
+  }
+
+  function drawMarkers(){
+    if(!map||!window.L)return;
+    markers.forEach(marker=>map.removeLayer(marker));
+    markers=[];
+    state.pins.forEach(pin=>{
+      if(typeof pin.lat!=='number'||typeof pin.lng!=='number')return;
+      const marker=L.marker([pin.lat,pin.lng]).addTo(map);
+      marker.bindPopup(`
+        <div class="map-popup">
+          <strong>${escapeHTML(pin.name)}</strong>
+          <p>${escapeHTML(pin.address)}</p>
+          <small>Saved by ${escapeHTML(playerName(pin.by))}</small>
+          <button class="popup-delete" data-delete-pin="${escapeHTML(pin.id)}">Remove pin</button>
+        </div>
+      `);
+      markers.push(marker);
+    });
+  }
+
+  function configureMapTouchGestures(){
+    if(!map)return;
+    const container=map.getContainer();
+    const mobile=window.matchMedia('(max-width: 650px)').matches;
+
+    if(mobile){
+      if(map.dragging && map.dragging.enabled())map.dragging.disable();
+      if(map.touchZoom && map.touchZoom.enabled())map.touchZoom.disable();
+    }else{
+      if(map.dragging && !map.dragging.enabled())map.dragging.enable();
+      if(map.touchZoom && !map.touchZoom.enabled())map.touchZoom.enable();
+    }
+
+    if(container._twoFingerMapGesturesBound)return;
+    container._twoFingerMapGesturesBound=true;
+
+    let previous=null;
+    const midpoint=(a,b)=>({
+      x:(a.clientX+b.clientX)/2,
+      y:(a.clientY+b.clientY)/2
+    });
+    const distance=(a,b)=>Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+
+    container.addEventListener('touchstart',event=>{
+      if(!window.matchMedia('(max-width: 650px)').matches||event.touches.length!==2){
+        previous=null;
+        return;
+      }
+      const a=event.touches[0],b=event.touches[1],mid=midpoint(a,b);
+      previous={mid,distance:distance(a,b)};
+    },{passive:true});
+
+    container.addEventListener('touchmove',event=>{
+      if(!window.matchMedia('(max-width: 650px)').matches||event.touches.length!==2){
+        previous=null;
+        return;
+      }
+      const a=event.touches[0],b=event.touches[1],mid=midpoint(a,b),dist=distance(a,b);
+      if(!previous){
+        previous={mid,distance:dist};
+        return;
+      }
+      event.preventDefault();
+
+      const dx=mid.x-previous.mid.x;
+      const dy=mid.y-previous.mid.y;
+
+      if(Math.abs(dx)+Math.abs(dy)>0){
+        map.panBy([-dx,-dy],{animate:false});
+      }
+
+      if(previous.distance>0&&dist>0){
+        const zoomDelta=Math.log2(dist/previous.distance);
+        if(Math.abs(zoomDelta)>0.015){
+          const next=Math.max(11,Math.min(19,map.getZoom()+zoomDelta));
+          map.setZoom(next,{animate:false});
+        }
+      }
+      previous={mid,distance:dist};
+    },{passive:false});
+
+    const reset=()=>{previous=null};
+    container.addEventListener('touchend',reset,{passive:true});
+    container.addEventListener('touchcancel',reset,{passive:true});
+  }
+
+  function initMap(){
+    if(!window.L)return;
+
+    if(map){
+      configureMapTouchGestures();
+      setTimeout(()=>map.invalidateSize(),120);
+      drawMarkers();
+      return;
+    }
+
+    map=L.map('map',{
+      zoomControl:true,
+      zoomSnap:0.25
+    }).setView([40.4168,-3.7038],13);
+
+    configureMapTouchGestures();
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'&copy; OpenStreetMap contributors',
+      maxZoom:19
+    }).addTo(map);
+
+    map.on('click',async e=>{
       const lat=e.latlng.lat,lng=e.latlng.lng;
       const popup=L.popup().setLatLng(e.latlng)
         .setContent('<b>Finding location…</b>').openOn(map);
       let address='Coordinates: '+lat.toFixed(5)+', '+lng.toFixed(5);
       let placeName='Selected place';
+
       try{
         const response=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+lat+'&lon='+lng);
         if(response.ok){
@@ -213,118 +491,239 @@
           address=data.display_name||address;
           placeName=data.name||(data.address&&(data.address.amenity||data.address.shop||data.address.road))||placeName;
         }
-      }catch(error){console.warn('Reverse geocoding unavailable',error);}
-      const safeName=esc(placeName),safeAddress=esc(address);
-      popup.setContent('<div class="map-place-popup"><b>'+safeName+'</b><p>'+safeAddress+'</p><button type="button" class="map-popup-add-pin">＋ Add this pin</button></div>');
-      setTimeout(()=>{
-        const button=document.querySelector('.map-popup-add-pin');
-        if(button) button.onclick=()=>{
-          const pin={id:crypto.randomUUID(),name:placeName,lat,lng,category:'Custom',note:address};
-          state.customPlaces=state.customPlaces||[];
-          state.customPlaces.push(pin);
-          save();
-          if(typeof persistPin==='function') persistPin(pin);
-          drawMarkers();
-          map.closePopup();
-          toast('Map pin added.');
-        };
-      },0);
-    });drawMarkers()}
-  function drawMarkers(){
-    if(!map)return;markers.forEach(m=>map.removeLayer(m));markers=[];
-    const all=[...places.map(p=>({name:p[0],lat:p[1],lng:p[2],category:p[3],predefined:true})),...(state.customPlaces||[]).map(p=>({...p,category:p.category||'Custom'}))];
-    all.forEach(p=>{
-      const related=state.adventures.filter(a=>a.place&&a.place.toLowerCase()===p.name.toLowerCase());
-      const completed=related.some(a=>(a.completedBy||[]).length), planned=related.length>0&&!completed;
-      const color=completed?'#259b8e':planned?'#d65a9d':p.category==='Custom'?'#4b83c5':'#8b8790';
-      const icon=L.divIcon({className:'map-marker-icon',html:`<span style="background:${color}"></span>`,iconSize:[18,18],iconAnchor:[9,9]});
-      const status=completed?'Completed adventure':planned?'Planned adventure':p.category==='Custom'?'Custom pin':'Madrid place';
-      let popup=`<div class="map-place-popup"><b>${esc(p.name)}</b><p>${status}</p>`;
-      if(p.id&&!p.predefined) popup+=`<div class="pin-actions"><button type="button" data-edit-pin="${esc(p.id)}">EDIT</button><button type="button" data-delete-pin="${esc(p.id)}">DELETE</button></div>`;
-      popup+='</div>';
-      const marker=L.marker([p.lat,p.lng],{icon}).addTo(map).bindPopup(popup);markers.push(marker);
+      }catch(error){}
+
+      const content=document.createElement('div');
+      content.className='map-popup';
+      const title=document.createElement('strong');
+      title.textContent=placeName;
+      const addressText=document.createElement('p');
+      addressText.textContent=address;
+      const button=document.createElement('button');
+      button.className='popup-save';
+      button.textContent='Save this place';
+      button.addEventListener('click',()=>{
+        addPin({name:placeName,address,lat,lng});
+        map.closePopup();
+      });
+      content.append(title,addressText,button);
+      popup.setContent(content);
+    });
+
+    drawMarkers();
+  }
+
+  function renderCharacter(player){
+    activeCharacter=player;
+    const character=$('#characterProfile');
+    if(!character)return;
+    const data=playerData(player);
+    const photo=state.profilePhotos[player]||'';
+    character.innerHTML=`
+      <div class="profile-art">
+        ${photo?`<img src="${photo}" alt="${playerName(player)}'s profile photo">`:`<img src="./mu-v22-${player}-sprite-${player==='alisha'?'7f3a':'9c2d'}.png" alt="${playerName(player)}">`}
+      </div>
+      <div class="profile-details">
+        <p class="eyebrow">YOUR MADRID ALTER EGO</p>
+        <h2>${playerName(player)}</h2>
+        <div class="profile-stat"><strong>${data.points}</strong><span>Points earned</span></div>
+        <div class="profile-stat"><strong>${data.completed}</strong><span>Things completed</span></div>
+        <label class="upload-photo">Change profile photo<input type="file" accept="image/*" data-profile-photo="${player}"></label>
+      </div>
+    `;
+    $$('.character-tabs button').forEach(button=>{
+      button.classList.toggle('active',button.dataset.character===player);
     });
   }
-  function editPin(id){const pin=state.customPlaces.find(p=>String(p.id)===String(id));if(!pin)return;showModal('EDIT MAP PIN',`<form id="editPinForm"><label class="form-field">NAME<input name="name" required value="${esc(pin.name)}"></label><label class="form-field">DETAILS<input name="note" value="${esc(pin.note||'')}"></label><div class="modal-actions"><button type="button" class="secondary-button" id="cancelModal">CANCEL</button><button class="pixel-button" type="submit">SAVE PIN</button></div></form>`);$('#editPinForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);pin.name=f.get('name').trim();pin.note=f.get('note').trim();save();persistPin(pin);drawMarkers();closeModal();toast('Pin updated.');};}
-  async function removePin(id){const pin=state.customPlaces.find(p=>String(p.id)===String(id));if(!pin)return;if(!confirm(`Delete the pin “${pin.name}”?`))return;state.customPlaces=state.customPlaces.filter(p=>String(p.id)!==String(id));save();drawMarkers();await deletePersistedPin(id);map.closePopup();toast('Pin deleted.');}
-  window.addPlaceFromPopup=(name,cat)=>{if(!state.adventures.some(a=>a.title===`Visit ${name}`)){const a={id:crypto.randomUUID(),title:`Visit ${name}`,category:cat,place:name,description:'',completedBy:[],createdBy:currentUser};state.adventures.push(a);save();persistAdventure(a);toast('Added to your bucket list.')}};
 
-  async function findMapPlace(query){
-    const box=$('#mapSearchResults');
-    if(!query.trim()) return;
-    box.innerHTML='<div class="map-search-message">Looking for that place…</div>';
-    try{
-      const url='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=es&q='+encodeURIComponent(query+', Madrid, Spain');
-      const response=await fetch(url,{headers:{'Accept':'application/json'}});
-      if(!response.ok) throw new Error('Search is temporarily unavailable.');
-      const results=await response.json();
-      if(!results.length){box.innerHTML='<div class="map-search-message">No match found. Try a street, address or place name.</div>';return;}
-      box.innerHTML=results.map((r,i)=>`<button type="button" class="map-search-result" data-result="${i}"><b>${esc((r.name||r.display_name.split(',')[0]))}</b><small>${esc(r.display_name)}</small></button>`).join('');
-      $$('.map-search-result',box).forEach((button,i)=>button.onclick=()=>{
-        const r=results[i], lat=Number(r.lat), lon=Number(r.lon);
-        map.setView([lat,lon],17,{animate:true});
-        L.marker([lat,lon]).addTo(map).bindPopup(`<b>${esc(r.name||'Selected place')}</b><br>${esc(r.display_name)}`).openPopup();
-        box.innerHTML='';
-      });
-    }catch(err){box.innerHTML='<div class="map-search-message">Search could not connect. Please try again.</div>';console.error(err);}
+  function renderBucket(){
+    const buttons=$$('.bucket-filter');
+    buttons.forEach(button=>{
+      button.classList.toggle('active',button.dataset.bucket===activeBucket);
+    });
   }
-  const mapSearchForm=$('#mapSearchForm');
-  if(mapSearchForm) mapSearchForm.addEventListener('submit',e=>{e.preventDefault();findMapPlace($('#mapSearchInput').value)});
-  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-  function showCodeStep(chosen){selectedCharacter=chosen;const name=chosen==='alisha'?'ALISHA':'EVA';$('#chosenName').textContent=name;$('#playerStep').classList.add('hidden');$('#codeStep').classList.remove('hidden');$('#loginError').textContent='';$('#accessCode').value='';requestAnimationFrame(()=>$('#accessCode').focus());}
-  function showPlayerStep(){$('#codeStep').classList.add('hidden');$('#playerStep').classList.remove('hidden');$('#loginError').textContent='';$('#accessCode').value='';}
-  async function login(){
-    const chosen=selectedCharacter, code=$('#accessCode').value.trim(), button=$('#loginForm button[type=submit]');
-    if(!supabaseClient){$('#loginError').textContent='Login is not configured yet. Please try again later.';return}
-    if(!code){$('#loginError').textContent='Enter your secret code to continue.';return}
-    button.disabled=true;button.textContent='…';$('#loginError').textContent='';
-    try{
-      const {data,error}=await supabaseClient.auth.signInWithPassword({email:authPlayers[chosen],password:code});
-      if(error) throw error;
-      currentUser=chosen;
-      await openApp(chosen);
-    }catch(err){
-      console.error('Supabase login failed:',err);
-      $('#loginError').textContent='That code is not quite right. Try again.';
-      $('#accessCode').select();
-    }finally{button.disabled=false;button.textContent='➜'}
+
+  function searchMap(){
+    const query=$('#mapSearch').value.trim();
+    if(!query)return;
+    fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(query+', Madrid, Spain'))
+      .then(response=>response.json())
+      .then(results=>{
+        if(!results.length)return notify('Could not find that place.');
+        const result=results[0];
+        const lat=Number(result.lat),lng=Number(result.lon);
+        map.setView([lat,lng],16);
+        L.popup().setLatLng([lat,lng])
+          .setContent(`<strong>${escapeHTML(result.name||query)}</strong><p>${escapeHTML(result.display_name)}</p><button class="popup-save" data-search-save="1">Save this place</button>`)
+          .openOn(map);
+        map.once('popupopen',event=>{
+          const button=event.popup.getElement().querySelector('[data-search-save]');
+          if(button)button.addEventListener('click',()=>{
+            addPin({name:result.name||query,address:result.display_name,lat,lng});
+            map.closePopup();
+          });
+        });
+      })
+      .catch(()=>notify('Map search is unavailable right now.'));
   }
-  async function openApp(player){
-    currentUser=player;$('#loginScreen').classList.add('hidden');$('#app').classList.remove('hidden');
-    $('#signedIn').textContent='PLAYER: '+player.toUpperCase();
-    initMap();updateStats();renderLatest();renderBucket();renderQuests();renderScrapbook();renderCurrentActivity();renderCharacter(player);
-    $('#statusText').textContent='SIGNED IN · CONNECTING…';
-    await syncSharedData();
+
+  function showPage(page){
+    $$('.page').forEach(element=>element.classList.add('hidden'));
+    const target=$(`#${page}Page`);
+    if(target)target.classList.remove('hidden');
+    $$('.nav-button').forEach(button=>{
+      button.classList.toggle('active',button.dataset.page===page);
+    });
+    $('#sidebar')?.classList.remove('open');
+    if(page==='map')setTimeout(()=>initMap(),100);
+    if(page==='scrapbook')renderScrapbook();
+    if(page==='adventures')renderAdventures();
+    if(page==='quests')renderQuests();
+    if(page==='characters')renderCharacter(activeCharacter);
   }
-  async function logout(){
-    if(realtimeChannel&&supabaseClient){await supabaseClient.removeChannel(realtimeChannel);realtimeChannel=null;}
-    if(supabaseClient) await supabaseClient.auth.signOut();
-    currentUser='';$('#app').classList.add('hidden');$('#loginScreen').classList.remove('hidden');showPlayerStep();
-    $$('.character-choice').forEach(b=>b.classList.remove('selected'));
+
+  function openModal(id){
+    const modal=$(id);
+    if(modal)modal.classList.remove('hidden');
   }
-  // Two-stage entrance: player selection first, secret code second.
-  $$('.character-choice').forEach(b=>b.addEventListener('click',()=>{showCodeStep(b.dataset.login)}));$('#backToPlayers').onclick=showPlayerStep;$('#loginForm').addEventListener('submit',e=>{e.preventDefault();login()});$('#logout').onclick=logout;
-  $$('.nav-button').forEach(b=>b.onclick=()=>page(b.dataset.page));$$('[data-go]').forEach(b=>b.onclick=()=>page(b.dataset.go));$('#menuToggle').onclick=()=>$('#sidebar').classList.toggle('open');
-  // Window controls: delegated handlers also cover dynamically rendered controls.
-  document.addEventListener('click',e=>{
-    const close=e.target.closest('[data-close]');if(close){const w=document.querySelector(`[data-window="${close.dataset.close}"]`);if(w)w.classList.add('closed');e.preventDefault();e.stopPropagation();return;}
-    const min=e.target.closest('[data-min]');if(min){const w=document.querySelector(`[data-window="${min.dataset.min}"]`);if(w)w.classList.toggle('minimized');e.preventDefault();e.stopPropagation();return;}
-    if(e.target.closest('#cancelModal')||e.target.closest('#modalClose')){closeModal();return;}
-    const edit=e.target.closest('[data-edit-pin]');if(edit){editPin(edit.dataset.editPin);return;}
-    const del=e.target.closest('[data-delete-pin]');if(del){removePin(del.dataset.deletePin);return;}
-  });
-  // Drag by pointer delta from the original window position; remove transforms while dragging.
-  $$('.window').forEach(w=>{const bar=$('.window-bar',w);if(!bar)return;bar.addEventListener('pointerdown',e=>{if(e.target.closest('button')||innerWidth<650)return;const r=w.getBoundingClientRect();dragged={w,pointerId:e.pointerId,x:e.clientX,y:e.clientY,left:r.left,top:r.top};w.style.transform='none';bar.setPointerCapture(e.pointerId);e.preventDefault();});bar.addEventListener('pointermove',e=>{if(!dragged||dragged.w!==w||dragged.pointerId!==e.pointerId)return;const left=Math.max(0,Math.min(innerWidth-w.offsetWidth,dragged.left+(e.clientX-dragged.x)));const top=Math.max(62,Math.min(innerHeight-w.offsetHeight,dragged.top+(e.clientY-dragged.y)));w.style.left=left+'px';w.style.top=top+'px';w.style.right='auto';w.style.bottom='auto';});const stop=()=>{if(dragged?.w===w)dragged=null;};bar.addEventListener('pointerup',stop);bar.addEventListener('pointercancel',stop);});
-  // Main actions
-  $('#quickAdd').onclick=$('#addAdventure').onclick=addAdventureForm;$('#quickRandom').onclick=$('#questGenerator').onclick=generateQuest;$('#modalBackdrop').onclick=e=>{if(e.target.id==='modalBackdrop')closeModal()};
-  document.addEventListener('click',e=>{const b=e.target.closest('#bucketFilters [data-filter]');if(!b)return;activeFilter=b.dataset.filter;$$('#bucketFilters [data-filter]').forEach(x=>x.classList.toggle('active',x===b));renderBucket();});$('#adventureList').onclick=e=>{const done=e.target.closest('[data-complete]');if(done){completionForm(done.dataset.complete);return}const start=e.target.closest('[data-start-adventure]');if(start){const a=state.adventures.find(x=>x.id===start.dataset.startAdventure);if(a){state.currentActivity={id:a.id,type:'BUCKET LIST',title:a.title,startedBy:currentUser};save();toast('Added to CURRENTLY.')}}};$('#museumList').onclick=e=>{const b=e.target.closest('[data-museum-choice]');if(!b)return;const task=state.adventures.find(a=>a.title.toLowerCase()==='go to a museum');if(!task)return toast('The museum task is missing.');task.place=task.place===b.dataset.museum?'':b.dataset.museum;save();persistAdventure(task);toast(task.place?`${task.place} selected for your museum task.`:'Museum choice cleared.');};
-  $('#memoryFilters').onclick=e=>{const b=e.target.closest('[data-memory-filter]');if(!b)return;memoryFilter=b.dataset.memoryFilter;$$('[data-memory-filter]').forEach(x=>x.classList.toggle('active',x===b));renderScrapbook()};$('#photoUpload').onchange=async e=>{for(const file of [...e.target.files]){if(!file.type.startsWith('image/'))continue;const url=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});state.memories.push({id:crypto.randomUUID(),url,name:file.name,caption:'',by:currentUser,date:new Date().toLocaleDateString()})}save();e.target.value='';toast('Photo added to the scrapbook.')};$('#scrapbookGrid').addEventListener('change',e=>{const id=e.target.dataset.caption;if(!id)return;const m=state.memories.find(x=>x.id===id);if(m){m.caption=e.target.value;save()}});$('#scrapbookGrid').onclick=e=>{const b=e.target.closest('[data-delete-memory]');if(!b)return;const m=state.memories.find(x=>x.id===b.dataset.deleteMemory);if(m&&confirm('Remove this memory from this browser?')){state.memories=state.memories.filter(x=>x.id!==m.id);save()}};$$('.character-tabs button').forEach(b=>b.onclick=()=>renderCharacter(b.dataset.character));
-  // Modal close/cancel controls are handled by the delegated click listener above.
+
+  function closeModal(id){
+    const modal=$(id);
+    if(modal)modal.classList.add('hidden');
+  }
+
+  function bindEvents(){
+    $('#loginButton')?.addEventListener('click',()=>login($('#loginPlayer').value));
+    $('#loginPassword')?.addEventListener('keydown',event=>{
+      if(event.key==='Enter')login($('#loginPlayer').value);
+    });
+    $('#logoutButton')?.addEventListener('click',logout);
+    $('#menuToggle')?.addEventListener('click',()=>$('#sidebar')?.classList.toggle('open'));
+
+    $$('.nav-button').forEach(button=>{
+      button.addEventListener('click',()=>showPage(button.dataset.page));
+    });
+
+    $('#adventureList')?.addEventListener('click',event=>{
+      const button=event.target.closest('[data-complete-adventure]');
+      if(button)completeAdventure(button.dataset.completeAdventure,button.dataset.player);
+    });
+
+    $('#questList')?.addEventListener('click',event=>{
+      const button=event.target.closest('[data-complete-quest]');
+      if(button)completeQuest(button.dataset.completeQuest,button.dataset.player);
+    });
+
+    $('#addAdventureButton')?.addEventListener('click',()=>openModal('#adventureModal'));
+    $('#addQuestButton')?.addEventListener('click',()=>openModal('#questModal'));
+    $('#addMemoryButton')?.addEventListener('click',()=>openModal('#memoryModal'));
+
+    $('#adventureForm')?.addEventListener('submit',event=>{
+      event.preventDefault();
+      addAdventure();
+    });
+
+    $('#questForm')?.addEventListener('submit',event=>{
+      event.preventDefault();
+      addQuest();
+    });
+
+    $('#memoryForm')?.addEventListener('submit',event=>{
+      event.preventDefault();
+      addMemory();
+    });
+
+    $('#mapSearchButton')?.addEventListener('click',searchMap);
+    $('#mapSearch')?.addEventListener('keydown',event=>{
+      if(event.key==='Enter')searchMap();
+    });
+
+    $('#pinList')?.addEventListener('click',event=>{
+      const button=event.target.closest('[data-delete-pin]');
+      if(button)deletePin(button.dataset.deletePin);
+    });
+
+    $('#scrapbookGrid')?.addEventListener('click',event=>{
+      const button=event.target.closest('[data-delete-memory]');
+      if(!button)return;
+      const memory=state.memories.find(item=>item.id===button.dataset.deleteMemory);
+      if(memory&&confirm('Remove this memory from this browser?')){
+        state.memories=state.memories.filter(item=>item.id!==memory.id);
+        save();
+        renderScrapbook();
+      }
+    });
+
+    $$('.character-tabs button').forEach(button=>{
+      button.addEventListener('click',()=>renderCharacter(button.dataset.character));
+    });
+
+    document.addEventListener('click',event=>{
+      const close=event.target.closest('[data-close-modal]');
+      if(close){
+        const modal=close.closest('.modal-backdrop');
+        if(modal)modal.classList.add('hidden');
+      }
+
+      const cancel=event.target.closest('[data-cancel]');
+      if(cancel){
+        const modal=cancel.closest('.modal-backdrop');
+        if(modal)modal.classList.add('hidden');
+      }
+
+      const deletePinButton=event.target.closest('[data-delete-pin]');
+      if(deletePinButton&&!deletePinButton.closest('#pinList')){
+        deletePin(deletePinButton.dataset.deletePin);
+        map?.closePopup();
+      }
+    });
+
+    document.addEventListener('change',async event=>{
+      const profileInput=event.target.closest('[data-profile-photo]');
+      if(profileInput){
+        const file=profileInput.files[0];
+        if(!file)return;
+        try{
+          state.profilePhotos[profileInput.dataset.profilePhoto]=await compressImage(file);
+          save();
+          renderCharacter(profileInput.dataset.profilePhoto);
+          notify('Profile photo updated.');
+        }catch(error){
+          notify('Could not load that image.');
+        }
+      }
+
+      const bucket=event.target.closest('[data-bucket]');
+      if(bucket){
+        activeBucket=bucket.dataset.bucket;
+        renderBucket();
+      }
+    });
+  }
+
+  bindEvents();
+
   // Supabase persists the authenticated session on this device.
-  renderBucket();renderQuests();renderScrapbook();
+  renderBucket();
+  renderQuests();
+  renderScrapbook();
+
   (async()=>{
-    if(!supabaseClient){$('#loginError').textContent='Authentication setup is incomplete.';return}
+    if(!supabaseClient){
+      $('#loginError').textContent='Authentication setup is incomplete.';
+      return;
+    }
     const {data:{session}}=await supabaseClient.auth.getSession();
-    if(session){const email=session.user.email;const player=Object.keys(authPlayers).find(k=>authPlayers[k]===email);if(player)await openApp(player);else await supabaseClient.auth.signOut()}
+    if(session){
+      const email=session.user.email;
+      const player=Object.keys(authPlayers).find(key=>authPlayers[key]===email);
+      if(player)await openApp(player);
+      else await supabaseClient.auth.signOut();
+    }
   })();
+
+  // Re-enable normal desktop map dragging when the viewport changes.
+  window.addEventListener('resize',()=>{
+    if(map)configureMapTouchGestures();
+  });
 })();
