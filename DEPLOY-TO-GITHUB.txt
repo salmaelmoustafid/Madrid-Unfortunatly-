@@ -1,0 +1,14 @@
+GITHUB UPLOAD CHECKLIST
+
+1. Download and extract madrid-unfortunately-static.zip.
+2. Open the extracted folder.
+3. Open your GitHub repository.
+4. Choose Add file → Upload files.
+5. Drag the files and folders INSIDE this folder into GitHub. Do not upload the ZIP itself.
+6. Commit the upload to the main branch.
+7. In Netlify, import the GitHub repository.
+8. Build command: leave empty.
+9. Publish directory: .
+10. Deploy.
+
+No Node.js, Vite, React or build command is needed.
