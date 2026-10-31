@@ -219,7 +219,7 @@
           toast('Map pin added.');
         };
       },0);
-    }););drawMarkers()}
+    });drawMarkers()}
   function drawMarkers(){
     if(!map)return;markers.forEach(m=>map.removeLayer(m));markers=[];
     const all=[...places.map(p=>({name:p[0],lat:p[1],lng:p[2],category:p[3],predefined:true})),...state.customPlaces.map(p=>({name:p.name,lat:p.lat,lng:p.lng,category:p.category||'Custom',id:p.id}))];
