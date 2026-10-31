@@ -616,3 +616,47 @@ html,body{color:var(--ink)}
   pointer-events:auto!important;
 }
 .map-wash,.map-character{pointer-events:none!important}
+
+
+/* VERSION 18 FINAL FIX: no map sprites, player portraits live under Quick Actions. */
+#map{filter:none!important}
+#map .leaflet-tile{filter:none!important}
+.leaflet-container{background:#f2f2f2!important}
+.map-wash{display:none!important;pointer-events:none!important}
+.map-character{display:none!important}
+.quick-characters{
+ display:flex;align-items:center;justify-content:space-around;gap:14px;
+ margin-top:12px;padding:9px 6px 3px;border-top:1px solid #d9d2df;
+ background:#fff;
+}
+.quick-character{
+ display:flex;align-items:center;gap:7px;min-width:0;
+ color:#211a2d;font: bold 10px Verdana,sans-serif;
+}
+.quick-character img{
+ display:block;width:42px;height:62px;object-fit:contain;
+ image-rendering:auto;background:transparent;
+}
+.quick-character span{
+ display:block;padding:5px 7px;background:#fff;border:1px solid #211a2d;
+ color:#211a2d;letter-spacing:.4px;
+}
+#map,.leaflet-container,.leaflet-pane,.leaflet-tile-pane,.leaflet-marker-pane,.leaflet-overlay-pane{
+ pointer-events:auto!important;
+}
+
+
+/* Version 18 requested finishing details */
+.map-wash,.map-character{display:none!important}
+.map-character::before,.map-character::after,
+.map-wash::before,.map-wash::after{content:none!important;display:none!important}
+.quick-characters{
+ display:flex;align-items:center;justify-content:space-around;gap:18px;
+ margin-top:12px;padding:10px 6px 4px;border-top:1px solid #d9d2df;background:#fff;
+}
+.quick-character{display:flex;align-items:center;gap:8px;color:#211a2d;font:bold 10px Verdana,sans-serif}
+.quick-character img{display:block;width:48px;height:72px;object-fit:contain;background:transparent}
+.quick-character span{display:inline-block;padding:5px 7px;background:#fff;border:1px solid #211a2d;color:#211a2d}
+.map-place-popup{min-width:170px;max-width:260px}
+.map-place-popup p{font:11px/1.4 Verdana,sans-serif;margin:6px 0;color:#30283a}
+.map-popup-add-pin{background:#72dce7;border:2px solid #211a2d;padding:7px 10px;color:#211a2d;font:bold 11px Verdana,sans-serif;cursor:pointer}

@@ -1,15 +1,20 @@
-VERSION 17 — IMPORTANT UPLOAD INSTRUCTIONS
+VERSION 18 — COMPLETE WEBSITE PACKAGE
 
-Upload/replace the website files in the ROOT of your GitHub repository.
+Upload the CONTENTS of this folder to the ROOT of your GitHub repository.
+Keep the folder structure. Do not upload the ZIP itself.
 
-The repository root must contain:
-- index.html
-- app.js
-- styles.css
-- supabase-config.js
-- netlify.toml
-- assets/  (folder containing alisha-character.png and eva-character.png)
-- supabase/ (folder)
+Required:
+index.html
+app.js
+styles.css
+supabase-config.js
+netlify.toml
+assets/
+  alisha-character.png
+  eva-character.png
+supabase/
 
-Do not upload only index.html. Do not put the assets folder inside another nested project folder.
-The two character PNGs are already included in assets/.
+Quick Actions now contains both character portraits.
+The map no longer displays character sprites or decorative overlays.
+Clicking the map finds the clicked location and opens a popup with an Add this pin button.
+The separate Add a map pin Quick Actions button has been removed.

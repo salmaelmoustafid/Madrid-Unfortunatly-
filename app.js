@@ -190,22 +190,36 @@
     $('#confirmDone').onclick=()=>{const who=$('input[name="who"]:checked');if(!who){toast('Choose who completed it.');return}a.completedBy=who.value==='both'?['alisha','eva']:[who.value];a.completedAt=new Date().toISOString();a.completionComment=$('#completionComment').value.trim()||suggestedComment(a.title,a.category);save();persistAdventure(a);closeModal();if(map)drawMarkers();toast(a.completionComment)};
   }
   function generateQuest(){const idea=sideIdeas[Math.floor(Math.random()*sideIdeas.length)];showModal('RANDOM SIDE QUEST',`<div style="text-align:center;padding:10px"><div style="font-size:35px">🎲</div><p class="eyebrow">YOUR NEXT QUESTIONABLE MISSION</p><h2 style="font: bold 20px Georgia,serif;line-height:1.4">${esc(idea)}</h2><p style="font-size:10px;color:#81768b">Worth 10 points · Complete it to add it to Side Quests.</p></div><div class="modal-actions"><button class="secondary-button" id="rerollQuest">REROLL</button><button class="pixel-button" id="acceptQuest">ACCEPT QUEST</button></div>`);$('#rerollQuest').onclick=generateQuest;$('#acceptQuest').onclick=()=>{state.currentActivity={id:crypto.randomUUID(),type:'SIDE QUEST',title:idea,startedBy:currentUser};save();closeModal();toast('Added to CURRENTLY. Go forth.')};}
-  function initMap(){if(!window.L)return;if(map){setTimeout(()=>map.invalidateSize(),120);drawMarkers();return}map=L.map('map',{zoomControl:true}).setView([40.4168,-3.7038],13);L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors, HOT style',maxZoom:19,subdomains:'abc'}).addTo(map);map.on('click',async e=>{
+  function initMap(){if(!window.L)return;if(map){setTimeout(()=>map.invalidateSize(),120);drawMarkers();return}map=L.map('map',{zoomControl:true}).setView([40.4168,-3.7038],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:19}).addTo(map);map.on('click',async e=>{
       const lat=e.latlng.lat,lng=e.latlng.lng;
-      if(pendingPin){
-        pendingPin=false;
-        const label=prompt('Name this place on the map:','Custom place');
-        if(!label){toast('Map pin cancelled.');return}
-        const place={id:crypto.randomUUID(),name:label.trim(),lat,lng,category:'Custom'};
-        state.customPlaces.push(place);save();persistPin(place);drawMarkers();toast('Custom map pin saved and shared.');return;
-      }
-      const popup=L.popup().setLatLng(e.latlng).setContent('<b>Selected location</b><br>Finding address…').openOn(map);
+      const popup=L.popup().setLatLng(e.latlng)
+        .setContent('<b>Finding location…</b>').openOn(map);
+      let address='Coordinates: '+lat.toFixed(5)+', '+lng.toFixed(5);
+      let placeName='Selected place';
       try{
         const response=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+lat+'&lon='+lng);
-        const data=await response.json();
-        popup.setContent('<b>'+esc(data.name||'Selected location')+'</b><br>'+esc(data.display_name||'Address unavailable')+'<br><small>'+lat.toFixed(5)+', '+lng.toFixed(5)+'</small>');
-      }catch(error){popup.setContent('<b>Selected location</b><br>'+lat.toFixed(5)+', '+lng.toFixed(5));}
-    });drawMarkers()}
+        if(response.ok){
+          const data=await response.json();
+          address=data.display_name||address;
+          placeName=data.name||(data.address&&(data.address.amenity||data.address.shop||data.address.road))||placeName;
+        }
+      }catch(error){console.warn('Reverse geocoding unavailable',error);}
+      const safeName=esc(placeName),safeAddress=esc(address);
+      popup.setContent('<div class="map-place-popup"><b>'+safeName+'</b><p>'+safeAddress+'</p><button type="button" class="map-popup-add-pin">＋ Add this pin</button></div>');
+      setTimeout(()=>{
+        const button=document.querySelector('.map-popup-add-pin');
+        if(button) button.onclick=()=>{
+          const pin={id:crypto.randomUUID(),name:placeName,lat,lng,category:'Custom',note:address};
+          state.customPlaces=state.customPlaces||[];
+          state.customPlaces.push(pin);
+          save();
+          if(typeof persistPin==='function') persistPin(pin);
+          drawMarkers();
+          map.closePopup();
+          toast('Map pin added.');
+        };
+      },0);
+    }););drawMarkers()}
   function drawMarkers(){
     if(!map)return;markers.forEach(m=>map.removeLayer(m));markers=[];
     const all=[...places.map(p=>({name:p[0],lat:p[1],lng:p[2],category:p[3],predefined:true})),...state.customPlaces.map(p=>({name:p.name,lat:p.lat,lng:p.lng,category:p.category||'Custom',id:p.id}))];
