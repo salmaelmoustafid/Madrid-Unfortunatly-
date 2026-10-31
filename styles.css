@@ -527,3 +527,84 @@ html,body{color:var(--ink)}
 .alisha-sprite,.eva-sprite{animation:none!important}
 .map-character{display:flex;flex-direction:column;align-items:center;gap:2px}
 .map-character span{background:#fff!important;color:#35283c!important;border:1px solid #9b879f!important}
+
+
+/* VERSION 15 — balanced retro/Y2K palette, preserving the original visual energy. */
+:root{
+ --pink:#ef75c5;
+ --magenta:#e94ac8;
+ --purple:#9a72e8;
+ --cyan:#67dce8;
+ --blue:#8ba9f4;
+ --mint:#8be0c9;
+ --yellow:#f5df78;
+ --ink:#211a2d;
+}
+.topbar{
+ background:linear-gradient(90deg,#9b35f3 0%,#c43bea 48%,#ed45c9 100%)!important;
+ color:#fff!important;border-bottom:3px solid var(--ink)!important;
+}
+.topbar .brand,.topbar .brand small,.topbar .signed-in{color:#fff!important}
+.topbar button{background:#76e0e9!important;color:#20172c!important;border:2px solid var(--ink)!important}
+.sidebar,.sidebar nav,.sidebar-rail,.side-nav{
+ background:#fff!important;color:var(--ink)!important;
+ border-color:var(--ink)!important;
+}
+.nav-button,.sidebar a,.sidebar button{
+ background:#fff!important;color:var(--ink)!important;
+}
+.nav-button.active,.nav-button:hover{
+ background:#d9f6f8!important;color:var(--ink)!important;
+ outline:2px solid #67dce8!important;
+}
+.window{background:#fff!important;border:2px solid var(--ink)!important;box-shadow:5px 5px 0 rgba(35,24,48,.28)!important}
+.window-bar,.titlebar{
+ color:#171326!important;border-bottom:2px solid var(--ink)!important;
+}
+.stats-window .window-bar{background:#c49af5!important}
+.currently-window .window-bar{background:#75dfe8!important}
+.quick-window .window-bar{background:#f17ac8!important}
+.legend-window .window-bar{background:#f4df79!important}
+.memories-window .window-bar{background:#91dfc7!important}
+.window-bar button,.titlebar button{background:#fff!important;color:#171326!important;border:1px solid var(--ink)!important}
+.window-body{background:#fff!important;color:#282035!important}
+.quick-window .window-body,.legend-window .window-body{background:#fff!important;color:#282035!important}
+.quick-window button,.quick-window .action-button{color:#20172c!important;border:2px solid var(--ink)!important}
+.quick-window .action-button:nth-child(1){background:#f27bc8!important}
+.quick-window .action-button:nth-child(2){background:#8db2f5!important}
+.quick-window .action-button:nth-child(3){background:#83dfc8!important}
+.legend-window .window-body,.legend-window .window-body *{color:#211a2d!important}
+.map-search-panel form{border-color:#211a2d!important;box-shadow:3px 3px 0 rgba(35,24,48,.25)!important}
+.map-search-panel form button{background:#77dfe8!important;color:#211a2d!important;border-color:#211a2d!important}
+.sprite-character{display:block!important;width:72px!important;height:88px!important;object-fit:contain!important;image-rendering:pixelated!important;background:none!important;animation:none!important}
+.alisha-sprite,.eva-sprite{background-image:none!important}
+.map-character{pointer-events:none!important}
+.map-wash{pointer-events:none!important;background:transparent!important}
+#map{filter:brightness(1.05) saturate(.9) contrast(.98)!important}
+.leaflet-container{cursor:grab}
+.leaflet-container:active{cursor:grabbing}
+.leaflet-popup-content{font:12px Verdana,sans-serif;color:#211a2d}
+.leaflet-popup-content-wrapper{border:1px solid #211a2d;border-radius:2px}
+
+#map,.leaflet-container,.leaflet-pane,.leaflet-tile-pane{pointer-events:auto!important}
+.map-wash,.map-character{pointer-events:none!important}
+.map-search-panel{z-index:850}
+.window{z-index:900}
+
+/* Version 16: use the two supplied individual character PNGs. */
+.map-character .sprite-character{
+  display:block!important;
+  width:64px!important;
+  height:auto!important;
+  max-width:64px!important;
+  max-height:112px!important;
+  object-fit:contain!important;
+  object-position:center bottom!important;
+  image-rendering:auto!important;
+  background:none!important;
+  animation:none!important;
+  filter:drop-shadow(1px 2px 0 rgba(35,25,40,.25));
+}
+.map-character .alisha-sprite,.map-character .eva-sprite{
+  background-image:none!important;
+}
