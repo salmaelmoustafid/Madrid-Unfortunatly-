@@ -5,3 +5,10 @@ Repair pass covering independent animated player sprites under Quick Actions, br
 Keep all files and folders together at the repository root. Do not rename index.html.
 
 Profile pictures are saved in this browser's local storage (device-specific); Supabase authentication sessions persist on this device. Shared adventures and pins continue to use the configured Supabase project.
+
+
+## Character asset filenames (isolated)
+- `assets/mu-v22-alisha-sprite-7f3a.png`
+- `assets/mu-v22-eva-sprite-9c2d.png`
+
+The Quick Actions portraits reference these unique paths. Legacy sprite-sheet filenames are not used by the Quick Actions markup or CSS.

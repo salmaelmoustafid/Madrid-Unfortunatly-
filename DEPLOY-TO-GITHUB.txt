@@ -18,3 +18,10 @@ Quick Actions now contains both character portraits.
 The map no longer displays character sprites or decorative overlays.
 Clicking the map finds the clicked location and opens a popup with an Add this pin button.
 The separate Add a map pin Quick Actions button has been removed.
+
+
+VERSION 22 CHARACTER ASSET NAMES
+The two independent character portraits now use unique filenames:
+- assets/mu-v22-alisha-sprite-7f3a.png
+- assets/mu-v22-eva-sprite-9c2d.png
+index.html references these exact paths. Do not upload old alisha-sprites.png / eva-sprites.png files for the Quick Actions characters.

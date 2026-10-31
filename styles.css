@@ -443,8 +443,6 @@ html,body{color:var(--ink)}
 .map-search-result small{font-size:9px;color:#81758a;margin-top:3px}
 .map-search-message{background:#fff;padding:10px;color:#766b80;border:1px solid #eee5f2}
 .sprite-character{width:78px;height:92px;background-repeat:no-repeat;background-position:0 0;background-size:auto 92px;image-rendering:pixelated;animation:sprite-idle 1.2s steps(5) infinite}
-.alisha-sprite{background-image:url('assets/alisha-sprites.png');background-size:calc(92px * 6.8333) 92px}
-.eva-sprite{background-image:url('assets/eva-sprites.png');background-size:calc(92px * 4.7593) 92px;animation:sprite-idle-eva 1.2s steps(3) infinite}
 @keyframes sprite-idle{from{background-position:0 0}to{background-position:-533px 0}}
 @keyframes sprite-idle-eva{from{background-position:0 0}to{background-position:-348px 0}}
 /* White content surfaces requested for the main sections. */
@@ -672,8 +670,6 @@ html,body{color:var(--ink)}
 .quick-characters{display:flex!important;align-items:flex-end!important;justify-content:space-evenly!important;gap:22px!important;padding:12px 8px 5px!important;background:#fff!important}
 .quick-character{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-end!important;gap:5px!important;min-width:72px!important}
 .quick-character .sprite-character{display:block!important;width:62px!important;height:82px!important;background-repeat:no-repeat!important;background-position:0 0!important;background-color:transparent!important;image-rendering:pixelated!important;flex:none!important}
-.quick-character .alisha-sprite{background-image:url('./alisha-sprites.png')!important;background-size:calc(82px * 6.8333) 82px!important;animation:alisha-idle 1.15s steps(6) infinite!important}
-.quick-character .eva-sprite{background-image:url('./eva-sprites.png')!important;background-size:calc(82px * 4.7593) 82px!important;animation:eva-idle 1.15s steps(4) infinite!important}
 @keyframes alisha-idle{from{background-position:0 0}to{background-position:-467px 0}}
 @keyframes eva-idle{from{background-position:0 0}to{background-position:-293px 0}}
 .quick-character span{font-size:9px!important}
@@ -690,3 +686,16 @@ html,body{color:var(--ink)}
 .modal,.modal *{pointer-events:auto}
 .modal-title button,.modal-actions button{cursor:pointer!important;position:relative;z-index:2}
 @media(max-width:650px){.quick-window{width:205px!important;min-width:0!important}.quick-characters{gap:10px!important}.quick-character .sprite-character{transform:scale(.9);transform-origin:bottom center}}
+
+
+/* V21: use the two supplied individual character images, outside the Quick Actions window. */
+.quick-characters{position:absolute!important;z-index:710!important;top:166px!important;right:15px!important;width:235px!important;display:flex!important;align-items:flex-end!important;justify-content:space-evenly!important;gap:18px!important;padding:0!important;margin:0!important;background:transparent!important;border:0!important;box-shadow:none!important;pointer-events:none!important}
+.quick-character{display:flex!important;flex:1 1 0!important;min-width:0!important;flex-direction:column!important;align-items:center!important;justify-content:flex-end!important;gap:4px!important;background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
+.quick-character-image{display:block!important;width:auto!important;height:128px!important;max-width:100%!important;object-fit:contain!important;object-position:center bottom!important;image-rendering:auto!important;background:transparent!important;border:0!important;box-shadow:none!important}
+.quick-character span{display:block!important;padding:3px 7px!important;background:#fff!important;border:1px solid #30263a!important;color:#211a2d!important;font: bold 10px Georgia,serif!important;letter-spacing:.4px!important}
+.quick-window .quick-characters{display:none!important}
+@media(max-width:650px){.quick-characters{top:153px!important;right:8px!important;width:205px!important;gap:8px!important}.quick-character-image{height:105px!important}}
+
+/* V22 asset isolation: unique portrait files; no legacy sprite-sheet backgrounds. */
+.quick-character-image{background-image:none!important;background-color:transparent!important;object-fit:contain!important;image-rendering:auto!important}
+.quick-character .alisha-sprite,.quick-character .eva-sprite{background-image:none!important;animation:none!important}
