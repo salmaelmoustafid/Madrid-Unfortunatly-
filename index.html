@@ -49,9 +49,17 @@
     <main class="main">
       <section id="page-map" class="page active map-page">
         <div id="map" aria-label="Interactive map of Madrid"></div>
+        <div class="map-search-panel" role="search">
+          <form id="mapSearchForm">
+            <span class="map-search-icon">⌕</span>
+            <input id="mapSearchInput" type="search" placeholder="Find an address or place in Madrid…" autocomplete="off" aria-label="Find an address or place">
+            <button type="submit">FIND</button>
+          </form>
+          <div id="mapSearchResults" class="map-search-results" aria-live="polite"></div>
+        </div>
         <div class="map-wash"></div>
-        <div class="map-character alisha-map"><img src="assets/alisha-sprites.png" alt="Alisha sprite"><span>ALISHA</span></div>
-        <div class="map-character eva-map"><img src="assets/eva-sprites.png" alt="Eva sprite"><span>EVA</span></div>
+        <div class="map-character alisha-map"><div class="sprite-character alisha-sprite" role="img" aria-label="Alisha character"></div><span>ALISHA</span></div>
+        <div class="map-character eva-map"><div class="sprite-character eva-sprite" role="img" aria-label="Eva character"></div><span>EVA</span></div>
         <section class="window stats-window" data-window="stats"><div class="window-bar"><b>▣ MADRID ADVENTURE STATUS</b><div><button data-min="stats">_</button><button data-close="stats">×</button></div></div><div class="window-body"><div class="progress-line"><b id="progressCount">0 / 10</b><div class="progress"><i id="progressFill"></i></div></div><div class="stat-grid"><div><b id="plannedCount">10</b><small>PLANNED</small></div><div><b id="doneCount">0</b><small>COMPLETED</small></div><div><b id="questCount">0</b><small>SIDE QUESTS</small></div><div><b id="memoryCount">0</b><small>MEMORIES</small></div></div></div></section>
         <section class="window quick-window" data-window="quick"><div class="window-bar blue"><b>▣ QUICK ACTIONS</b><div><button data-min="quick">_</button><button data-close="quick">×</button></div></div><div class="window-body"><button class="action-button" id="quickAdd">＋ Add an adventure <span>›</span></button><button class="action-button lilac" id="quickRandom">🎲 Random side quest <span>›</span></button><button class="action-button blue" id="quickPin">📍 Add a map pin <span>›</span></button></div></section>
         <section class="window memories-window" data-window="memories"><div class="window-bar"><b>▣ LATEST MEMORIES</b><div><button data-min="memories">_</button><button data-close="memories">×</button></div></div><div class="window-body"><div id="latestMemories" class="latest-memories"><p class="empty-small">No memories yet. The evidence will arrive eventually.</p></div><button class="text-link" data-go="scrapbook">OPEN SCRAPBOOK →</button></div></section>

@@ -83,3 +83,13 @@ Run `supabase/completion-comments-migration.sql` once in Supabase SQL Editor.
 It adds optional comment fields to adventure and side-quest completion records.
 The website suggests a short task-specific sarcastic comment, which the player can edit
 before saving. Comments are included in shared database sync.
+
+
+## Version 12 updates
+- Lighter CARTO/OSM map tiles and in-map address/place search.
+- Preset map markers show place details only; no permission-error add-to-bucket action.
+- Museum list is informational and no longer clickable.
+- Character sprites are rendered as animated sprite sheets.
+- Softer pastel overrides and white Bucket List, Side Quests and Scrapbook surfaces.
+- Character profile photos are resized and saved locally in this browser. They persist after refresh on this device; cross-device photo sharing requires a later Supabase Storage integration.
+- Expanded the random side-quest pool.

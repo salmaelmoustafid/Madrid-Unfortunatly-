@@ -9,7 +9,43 @@
     ['Take a photo of a street cat','📸',5],['Order something you have never tried before','☕',5],['Speak Spanish all day — no English allowed','💬',10],['Find a random event in Madrid','⭐',10],['Do something spontaneous','🪽',15],['Make a playlist titled “Madrid, unfortunately.”','♫',5]
   ];
   const museums=['Museo del Prado','Museo Reina Sofía','Museo Thyssen-Bornemisza','Museo Sorolla','Museo Arqueológico Nacional','Museo Cerralbo','Museo del Romanticismo','Museo de América'];
-  const sideIdeas=['Invent an elaborate history for an old building. Accuracy is not expected.','Find a street you have never walked down. Revolutionary.','Visit a bookshop and judge books by their covers.','Take a different route home. Try not to get lost.','Find the most dramatic doorway in your neighbourhood.','Have an unplanned afternoon. No committee meeting required.','Find the prettiest tiled doorway you can.','Go somewhere just because the name sounds interesting.','Ask for a recommendation and actually follow it.','Find a tiny hidden square and sit there for ten minutes.'];
+  const sideIdeas=[
+    'Invent an elaborate history for an old building. Accuracy is not expected.',
+    'Find a street you have never walked down. Revolutionary.',
+    'Visit a bookshop and judge books by their covers.',
+    'Take a different route home. Try not to get lost.',
+    'Find the most dramatic doorway in your neighbourhood.',
+    'Have an unplanned afternoon. No committee meeting required.',
+    'Find the prettiest tiled doorway you can.',
+    'Go somewhere just because the name sounds interesting.',
+    'Ask for a recommendation and actually follow it.',
+    'Find a tiny hidden square and sit there for ten minutes.',
+    'Find a mural you have never noticed before.',
+    'Choose a café based only on its name. Live with the consequences.',
+    'Take a photo of the most Madrid-looking balcony you can find.',
+    'Visit a neighbourhood you rarely explore.',
+    'Find a building that looks like it has a scandalous backstory.',
+    'Walk for fifteen minutes without checking your phone.',
+    'Find the best people-watching spot nearby.',
+    'Try a pastry you cannot pronounce confidently.',
+    'Locate a tiny independent shop and go inside.',
+    'Find a public fountain and make a very serious wish.',
+    'Take a photo of an unusually beautiful shadow.',
+    'Find the oldest-looking door on your route.',
+    'Listen to a song while walking somewhere new.',
+    'Find a street with a name you want explained.',
+    'Visit a market and identify one thing you have never eaten.',
+    'Pick a random metro stop and explore the area around it.',
+    'Find a quiet place in the city and do absolutely nothing.',
+    'Spot three examples of beautiful typography in the streets.',
+    'Find a place with a view and stay for five minutes.',
+    'Make a tiny itinerary for a future day out.',
+    'Find an interesting statue and invent its inner monologue.',
+    'Take the scenic route, even if it makes no sense.',
+    'Find a shop window that deserves its own exhibition.',
+    'Find a street musician and stay for one whole song.',
+    'Choose a destination by tossing a coin at the next crossroads.'
+  ];
   const places=[
     ['Museo del Prado',40.4138,-3.6921,'Museums'],['Museo Reina Sofía',40.4086,-3.6940,'Museums'],['Museo Thyssen-Bornemisza',40.4160,-3.6947,'Museums'],['Parque del Retiro',40.4153,-3.6844,'Explore'],['Puerta del Sol',40.4169,-3.7035,'Explore'],['El Rastro',40.4087,-3.7074,'Food & Drink'],['Malasaña',40.4260,-3.7040,'Nightlife'],['Chueca',40.4220,-3.6970,'Nightlife'],['La Latina',40.4110,-3.7080,'Explore']
   ];
@@ -124,7 +160,7 @@
     let hash=0; for(let i=0;i<(title||'').length;i++) hash=(hash*31+title.charCodeAt(i))|0;
     return options[Math.abs(hash)%options.length];
   }
-  function renderBucket(){const list=$('#adventureList');if(!list)return;const rows=state.adventures.filter(a=>activeFilter==='All'||a.category===activeFilter);list.innerHTML=rows.map(a=>{const done=a.completedBy?.length;return `<article class="adventure-card ${done?'done':''}"><button class="quest-check" data-complete="${a.id}" aria-label="Mark complete">${done?'✓':''}</button><div class="adventure-copy"><b>${esc(a.title)}</b><small>${esc(a.category)}${a.place?' · '+esc(a.place):''}</small>${a.description?`<p>${esc(a.description)}</p>`:''}${done?`<p class="done-stamp">✓ COMPLETED BY ${a.completedBy.map(x=>x.toUpperCase()).join(' + ')}</p>`:`<button class="mini-action" data-start-adventure="${a.id}">CURRENTLY DOING THIS →</button>`}</div></article>`}).join('')||'<div class="empty-state">Nothing in this category yet.</div>';$('#museumList').innerHTML=museums.map(m=>`<button class="museum-button" data-museum="${esc(m)}">＋ ${esc(m)}</button>`).join('')}
+  function renderBucket(){const list=$('#adventureList');if(!list)return;const rows=state.adventures.filter(a=>activeFilter==='All'||a.category===activeFilter);list.innerHTML=rows.map(a=>{const done=a.completedBy?.length;return `<article class="adventure-card ${done?'done':''}"><button class="quest-check" data-complete="${a.id}" aria-label="Mark complete">${done?'✓':''}</button><div class="adventure-copy"><b>${esc(a.title)}</b><small>${esc(a.category)}${a.place?' · '+esc(a.place):''}</small>${a.description?`<p>${esc(a.description)}</p>`:''}${done?`<p class="done-stamp">✓ COMPLETED BY ${a.completedBy.map(x=>x.toUpperCase()).join(' + ')}</p>`:`<button class="mini-action" data-start-adventure="${a.id}">CURRENTLY DOING THIS →</button>`}</div></article>`}).join('')||'<div class="empty-state">Nothing in this category yet.</div>';$('#museumList').innerHTML=museums.map(m=>`<div class="museum-button">${esc(m)}</div>`).join('')}
   function renderQuests(){const el=$('#questHistory');if(!el)return;if(!state.quests.length){el.innerHTML='<div class="empty-state"><div style="font-size:28px">✧</div><b>NO SIDE QUESTS COMPLETED… YET.</b><p>Generate a random side quest from Quick Actions on the map. Once completed, it will be recorded here.</p></div>';return}el.innerHTML=[...state.quests].reverse().map(q=>`<article class="quest-row"><span class="quest-icon">${q.icon||'✦'}</span><div><b>${esc(q.title)}</b><small>${esc(q.detail||'Side quest')} · ${esc((q.completedBy||[]).map(x=>x.toUpperCase()).join(' + ')||'Completed')}</small>${q.completionComment?`<p class="completion-snark">“${esc(q.completionComment)}”</p>`:''}</div><span class="points">+${q.points||0} PTS</span></article>`).join('')}
   function renderScrapbook(){const el=$('#scrapbookGrid');if(!el){return}const rows=state.memories.filter(m=>memoryFilter==='All'||m.by===memoryFilter);el.innerHTML=rows.length?rows.map(m=>`<article class="memory-card"><img src="${m.url}" alt="${esc(m.caption||'Memory')}"><input data-caption="${m.id}" value="${esc(m.caption||'') }" placeholder="Add a caption…"><div class="memory-meta"><span>${(m.by||'').toUpperCase()} · ${esc(m.date||'')}</span><button class="text-link" data-delete-memory="${m.id}">REMOVE</button></div></article>`).join(''):'<div class="empty-state" style="grid-column:1/-1"><div style="font-size:28px">ʚɞ</div><b>THE SCRAPBOOK IS WAITING.</b><p>Upload your first photo. No sample memories — only your actual evidence.</p></div>'}
   function renderCharacter(who){
@@ -154,7 +190,7 @@
     $('#confirmDone').onclick=()=>{const who=$('input[name="who"]:checked');if(!who){toast('Choose who completed it.');return}a.completedBy=who.value==='both'?['alisha','eva']:[who.value];a.completedAt=new Date().toISOString();a.completionComment=$('#completionComment').value.trim()||suggestedComment(a.title,a.category);save();persistAdventure(a);closeModal();if(map)drawMarkers();toast(a.completionComment)};
   }
   function generateQuest(){const idea=sideIdeas[Math.floor(Math.random()*sideIdeas.length)];showModal('RANDOM SIDE QUEST',`<div style="text-align:center;padding:10px"><div style="font-size:35px">🎲</div><p class="eyebrow">YOUR NEXT QUESTIONABLE MISSION</p><h2 style="font: bold 20px Georgia,serif;line-height:1.4">${esc(idea)}</h2><p style="font-size:10px;color:#81768b">Worth 10 points · Complete it to add it to Side Quests.</p></div><div class="modal-actions"><button class="secondary-button" id="rerollQuest">REROLL</button><button class="pixel-button" id="acceptQuest">ACCEPT QUEST</button></div>`);$('#rerollQuest').onclick=generateQuest;$('#acceptQuest').onclick=()=>{state.currentActivity={id:crypto.randomUUID(),type:'SIDE QUEST',title:idea,startedBy:currentUser};save();closeModal();toast('Added to CURRENTLY. Go forth.')};}
-  function initMap(){if(!window.L)return;if(map){setTimeout(()=>map.invalidateSize(),120);drawMarkers();return}map=L.map('map',{zoomControl:true}).setView([40.4168,-3.7038],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:19}).addTo(map);map.on('click',e=>{if(!pendingPin)return;pendingPin=false;const label=prompt('Name this place on the map:','Custom place');if(!label){toast('Map pin cancelled.');return}const place={id:crypto.randomUUID(),name:label.trim(),lat:e.latlng.lat,lng:e.latlng.lng,category:'Custom'};state.customPlaces.push(place);save();persistPin(place);drawMarkers();toast('Custom map pin saved and shared.');});drawMarkers()}
+  function initMap(){if(!window.L)return;if(map){setTimeout(()=>map.invalidateSize(),120);drawMarkers();return}map=L.map('map',{zoomControl:true}).setView([40.4168,-3.7038],13);L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:20}).addTo(map);map.on('click',e=>{if(!pendingPin)return;pendingPin=false;const label=prompt('Name this place on the map:','Custom place');if(!label){toast('Map pin cancelled.');return}const place={id:crypto.randomUUID(),name:label.trim(),lat:e.latlng.lat,lng:e.latlng.lng,category:'Custom'};state.customPlaces.push(place);save();persistPin(place);drawMarkers();toast('Custom map pin saved and shared.');});drawMarkers()}
   function drawMarkers(){
     if(!map)return;markers.forEach(m=>map.removeLayer(m));markers=[];
     const all=[...places.map(p=>({name:p[0],lat:p[1],lng:p[2],category:p[3],predefined:true})),...state.customPlaces.map(p=>({name:p.name,lat:p.lat,lng:p.lng,category:p.category||'Custom',id:p.id}))];
@@ -165,11 +201,33 @@
       const symbol=completed?'✦':planned?'◆':p.category==='Custom'?'📍':'ʚɞ';
       const icon=L.divIcon({className:'',html:`<span style="font-size:22px;color:${completed?'#37a8a2':planned?'#d62eb8':'#8a59c7'};text-shadow:1px 1px #fff, -1px -1px #fff;filter:drop-shadow(1px 2px 1px #aaa)">${symbol}</span>`,iconSize:[28,28],iconAnchor:[14,24]});
       const status=completed?'Completed adventure':planned?'Planned adventure':'Madrid place';
-      const popup=`<b>${esc(p.name)}</b><br>${status}<br><button onclick="window.addPlaceFromPopup('${String(p.name).replace(/'/g,"\\'")}','${p.category}')">＋ Add to bucket list</button>`;
+      const popup=`<b>${esc(p.name)}</b><br>${status}`;
       const marker=L.marker([p.lat,p.lng],{icon}).addTo(map).bindPopup(popup);markers.push(marker);
     });
   }
   window.addPlaceFromPopup=(name,cat)=>{if(!state.adventures.some(a=>a.title===`Visit ${name}`)){const a={id:crypto.randomUUID(),title:`Visit ${name}`,category:cat,place:name,description:'',completedBy:[],createdBy:currentUser};state.adventures.push(a);save();persistAdventure(a);toast('Added to your bucket list.')}};
+
+  async function findMapPlace(query){
+    const box=$('#mapSearchResults');
+    if(!query.trim()) return;
+    box.innerHTML='<div class="map-search-message">Looking for that place…</div>';
+    try{
+      const url='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=es&q='+encodeURIComponent(query+', Madrid, Spain');
+      const response=await fetch(url,{headers:{'Accept':'application/json'}});
+      if(!response.ok) throw new Error('Search is temporarily unavailable.');
+      const results=await response.json();
+      if(!results.length){box.innerHTML='<div class="map-search-message">No match found. Try a street, address or place name.</div>';return;}
+      box.innerHTML=results.map((r,i)=>`<button type="button" class="map-search-result" data-result="${i}"><b>${esc((r.name||r.display_name.split(',')[0]))}</b><small>${esc(r.display_name)}</small></button>`).join('');
+      $$('.map-search-result',box).forEach((button,i)=>button.onclick=()=>{
+        const r=results[i], lat=Number(r.lat), lon=Number(r.lon);
+        map.setView([lat,lon],17,{animate:true});
+        L.marker([lat,lon]).addTo(map).bindPopup(`<b>${esc(r.name||'Selected place')}</b><br>${esc(r.display_name)}`).openPopup();
+        box.innerHTML='';
+      });
+    }catch(err){box.innerHTML='<div class="map-search-message">Search could not connect. Please try again.</div>';console.error(err);}
+  }
+  const mapSearchForm=$('#mapSearchForm');
+  if(mapSearchForm) mapSearchForm.addEventListener('submit',e=>{e.preventDefault();findMapPlace($('#mapSearchInput').value)});
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function showCodeStep(chosen){selectedCharacter=chosen;const name=chosen==='alisha'?'ALISHA':'EVA';$('#chosenName').textContent=name;$('#playerStep').classList.add('hidden');$('#codeStep').classList.remove('hidden');$('#loginError').textContent='';$('#accessCode').value='';requestAnimationFrame(()=>$('#accessCode').focus());}
   function showPlayerStep(){$('#codeStep').classList.add('hidden');$('#playerStep').classList.remove('hidden');$('#loginError').textContent='';$('#accessCode').value='';}

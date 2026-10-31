@@ -420,3 +420,47 @@ html,body{color:var(--ink)}
 /* Completion comments */
 .completion-snark{font:italic 11px Georgia,serif;color:#786184;margin:5px 0 0;line-height:1.35}
 .form-field input#completionComment{font:italic 12px Georgia,serif}
+
+
+/* Version 12: lighter map, place finder, softer pastel UI and reliable sprite-sheet display. */
+:root{
+  --pink:#efb8d8;
+  --purple:#c9b5ee;
+  --cyan:#b8e9ee;
+}
+.map-page{background:#fff}
+#map{filter:brightness(1.12) saturate(.78) contrast(.96)}
+.map-wash{background:rgba(255,255,255,.05)!important;pointer-events:none}
+.map-search-panel{position:absolute;z-index:650;top:15px;left:50%;transform:translateX(-50%);width:min(430px,calc(100% - 30px));font:11px Verdana,sans-serif}
+.map-search-panel form{display:flex;align-items:center;gap:7px;background:#fff;border:2px solid #b9a8c8;box-shadow:3px 3px 0 rgba(65,43,78,.2);padding:6px 7px}
+.map-search-icon{font-size:22px;color:#9073aa;line-height:1}
+.map-search-panel input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:12px Verdana,sans-serif;color:#392b46}
+.map-search-panel form button{border:1px solid #9d8bb1;background:#d9c9f0;padding:7px 11px;font:bold 10px Verdana,sans-serif;color:#382a48}
+.map-search-results{background:#fff;max-height:230px;overflow:auto}
+.map-search-result{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #eee5f2;background:#fff;padding:8px 10px;color:#3d3048}
+.map-search-result:hover{background:#f5effa}
+.map-search-result b,.map-search-result small{display:block}
+.map-search-result small{font-size:9px;color:#81758a;margin-top:3px}
+.map-search-message{background:#fff;padding:10px;color:#766b80;border:1px solid #eee5f2}
+.sprite-character{width:78px;height:92px;background-repeat:no-repeat;background-position:0 0;background-size:auto 92px;image-rendering:pixelated;animation:sprite-idle 1.2s steps(5) infinite}
+.alisha-sprite{background-image:url('assets/alisha-sprites.png');background-size:calc(92px * 6.8333) 92px}
+.eva-sprite{background-image:url('assets/eva-sprites.png');background-size:calc(92px * 4.7593) 92px;animation:sprite-idle-eva 1.2s steps(3) infinite}
+@keyframes sprite-idle{from{background-position:0 0}to{background-position:-533px 0}}
+@keyframes sprite-idle-eva{from{background-position:0 0}to{background-position:-348px 0}}
+/* White content surfaces requested for the main sections. */
+#page-bucket,#page-quests,#page-scrapbook{background:#fff!important}
+#page-bucket .page-content,#page-quests .page-content,#page-scrapbook .page-content{background:#fff!important}
+.museum-button{cursor:default!important;background:#fff!important;color:#62586b!important}
+.museum-button:hover{color:#62586b!important}
+.window,.window-body,.adventure-card,.quest-row,.memory-card{background-color:#fff}
+.window-bar{background:#c9b5ee}
+.window-bar.blue{background:#b8e9ee}
+.action-button,.action-button.pink{background:#efb8d8}
+.action-button.purple{background:#d7c5ef}
+.action-button.cyan{background:#b8e9ee}
+.pixel-button{background:#e6d9f3;border-color:#b9a8c8;box-shadow:3px 3px 0 #e8dfef}
+.filter,.filter.active,.filter:hover{background:#f6effa}
+.profile-avatar img{object-fit:cover}
+@media(max-width:700px){
+ .map-search-panel{top:8px;left:50%;width:calc(100% - 20px)}
+}
